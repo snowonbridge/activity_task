@@ -1,0 +1,174 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: nihao
+ * Date: 17-9-7
+ * Time: 下午4:03
+ */
+namespace Workerman\Model;
+
+
+use Workerman\Lib\Logger;
+use Workerman\Lib\Model;
+use Workerman\Lib\Okey;
+use Workerman\Service\ATCode;
+
+class CrossChallegeConfig extends Model{
+    public $db = 'activity';
+    public $table = 'cross_challege_config';
+
+    const OWN_OPEN_ROOM_Y = 1;
+    const OWN_OPEN_ROOM_N = 0;
+    const OWN_OPEN_ROOM_IGNORE = 2;
+    const WIN_RESULT_Y = 1;
+    const WIN_RESULT_N = 0;
+
+    public function rule()
+    {
+        return [
+            ['game_list','required'],//1-12-32&2-11-30,2-1-*,*,(*表示任意 ，第一个数字游戏 第二个玩法 第三个经典场)
+            ['game_num','required'],//局数
+            ['name','required'],
+            ['own_open_room','required'],
+            ['friends_num','required'],
+        ];
+    }
+    public function add($params=array())
+    {
+        if(!$this->validate($params,$this->rules()))
+        {
+            return false;
+        }
+        $params['create_time'] = time();
+        return  $this->insert($this->table,$params);
+    }
+
+
+
+    public function getOne($id)
+    {
+
+        return ATCode::getCache(Okey::CrossChallegeConfig($id),function($id){
+            return  $this->getRow($this->table,'id=:id',[':id'=>$id]);
+        },[$id]);
+
+    }
+
+    /**
+     * @desc 缓存清除
+     * @return int
+     */
+    public function rmCacheById($id)
+    {
+        return  ATCode::rmCache(Okey::CrossChallegeConfig($id));
+    }
+
+    /**
+     * @desc 验证条件,不用验证局数
+     * @param $id
+     * @param $game_no
+     * @param $friend_relation
+     * @return bool
+     */
+    protected  function validWin($win,$r)
+    {
+        if(!$r)
+            return false;
+        //不计较输赢
+        if(!$r['win_result'])
+            return true;
+        if( $win == $r['win_result'])
+            return true;
+        Logger::write('不满足该条件'.json_encode($r),__METHOD__);
+        return false;
+    }
+
+    /**
+     * 验证游戏数量
+     * @param $num
+     * @param int $id
+     * @param string $r
+     * @return bool
+     */
+    public  function validGameNums($num,$id=0,$r='')
+    {
+        if($id)
+            $r = $this->getOne($id);
+        if($r  && $r['game_num'] >= $num)
+            return true;
+        Logger::write('不满足该条件'.json_encode([$num,$r]),__METHOD__);
+        return false;
+
+    }
+    protected function validOwnOpenRoom($own_open_room,$r='')
+    {
+        if(!$r)
+            return false;
+        if(self::OWN_OPEN_ROOM_IGNORE == $r['own_open_room'])
+            return true;
+        if( $r['own_open_room'] == $own_open_room)
+            return true;
+        Logger::write('不满足该条件'.json_encode([$own_open_room,$r]),__METHOD__);
+        return false;
+
+    }
+    protected function validFriendNums($friends_num,$r='')
+    {
+        if(!$r)
+            return false;
+        if($r['friends_num'] <=$friends_num)
+            return true;
+        Logger::write('不满足该条件'.json_encode([$friends_num,$r]),__METHOD__);
+        return false;
+    }
+    public function validGameNo($game_no,$r)
+    {
+        if(!$r)
+            return false;
+        if(empty($r['game_list']))
+            return true;
+        if(false !== strpos($r['game_list'],$game_no))
+            return true;
+
+        $game_list = explode(',',$r['game_list']);
+        if(in_array($game_no,$game_list))
+            return true;
+        $game_no = substr($game_no,0,strrpos($game_no,'-'));
+        if(in_array($game_no,$game_list))
+            return true;
+        $game_no = substr($game_no,0,strrpos($game_no,'-'));
+        if(in_array($game_no,$game_list))
+            return true;
+        Logger::write('不满足该条件'.json_encode([$game_no,$r]),__METHOD__);
+        return false;
+
+    }
+
+    /**
+     * @desc 验证过关关卡配置
+     * @param $id
+     * @param $params
+     * @return bool
+     */
+    public function validConfig($id,$params)
+    {
+        $r = $this->getOne($id);
+        if( $this->validWin($params['win_result'],$r)
+            && $this->validFriendNums($params['friends_num'],$r)
+            && $this->validOwnOpenRoom($params['own_open_room'],$r)
+            && $this->validGameNo($params['game_no'],$r)
+        )
+            return true;
+
+        return false;
+    }
+
+
+
+
+
+
+
+
+
+} 

@@ -1,0 +1,4 @@
+<?php
+//000000000060
+ exit();?>
+a:30:{s:2:"id";s:2:"12";s:3:"uid";s:2:"12";s:4:"chip";s:4:"5960";s:6:"ulevel";s:1:"0";s:3:"exp";s:1:"0";s:3:"vip";s:1:"0";s:8:"roomcard";s:1:"0";s:7:"diamond";s:1:"0";s:10:"activetime";s:10:"1502101574";s:6:"invite";s:1:"0";s:5:"ldays";s:1:"1";s:6:"cldays";s:1:"0";s:8:"prestige";s:1:"0";s:6:"gameid";s:1:"0";s:6:"charge";s:1:"0";s:14:"prestige_level";s:1:"0";s:11:"mentercount";s:1:"3";s:6:"wincnt";s:1:"0";s:7:"losecnt";s:1:"0";s:7:"drawcnt";s:1:"0";s:7:"lwincnt";s:1:"0";s:5:"hlwin";s:1:"0";s:9:"zjh_level";s:1:"0";s:8:"mj_level";s:1:"0";s:8:"nn_level";s:1:"0";s:11:"texas_level";s:1:"0";s:9:"ddz_level";s:1:"0";s:9:"lhd_level";s:1:"0";s:13:"subsidy_count";s:1:"0";s:23:"novitiate_receive_count";s:1:"0";}

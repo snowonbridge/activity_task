@@ -1,0 +1,378 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: nihao
+ * Date: 17-9-15
+ * Time: 上午9:44
+ */
+
+namespace Workerman\Service;
+
+
+use Workerman\Lib\Code;
+use Workerman\Lib\Model;
+use Workerman\Model\ActivityCategory;
+use Workerman\Model\ActivityChannel;
+use Workerman\Model\ActivityControl;
+use Workerman\Model\ActivityTabSetting;
+use Workerman\Model\ConsumptionGift;
+use Workerman\Model\CrossChallegeGift;
+use Workerman\Model\User;
+use Workerman\Model\UserConsumptionLog;
+use Workerman\Lib\Logger;
+use Workerman\Model\UserGame;
+use Workerman\Service\ConsumptionService;
+use Workerman\Service\CrossChallegeService;
+use Workerman\Service\EveryDayTaskService;
+use Workerman\Service\FunctionService;
+
+use Workerman\Service\SocialService;
+class MonthTaskService extends Model{
+
+    private $start_time;
+    private $end_time;
+    /**
+     * 活动列表，关联的游戏只能是
+     * @param $uid
+     */
+    public function getListByTabId($uid,$tab_id)
+    {
+         $list1 = $this->getConsumptionList($uid,$tab_id);
+         $list2 = $this->getCrossList($uid,$tab_id);
+         $title = ActivityTabSetting::instance()->getName($tab_id);
+        $list1 = $list1?:array();
+        $list2 = $list2?:array();
+        return ['items'=>(array_merge($list1,$list2)),'start_time'=>$this->start_time,'end_time'=>$this->end_time,'title'=>$title];
+    }
+    private function getConsumptionList($uid,$tab_id)
+    {
+        $list1 = ConsumptionGift::instance()->getListByTabId($tab_id);
+
+        if($list1)
+        {
+            $tmp=[];
+            foreach($list1 as $k=>$v)
+            {
+                if(ActivityCategory::instance()->isActive($v['activity_id']))
+                    $tmp[$v['activity_id']] = $v;
+            }
+            $list1 = $tmp;
+
+            foreach($list1 as $activity_id=>$v)
+            {
+
+                if(!isset($list1[$activity_id]['disable']) )
+                {
+                    $list2 = ConsumptionService::instance()->showJoinStatus($uid,$activity_id,date('Ym'));
+                    if($list2)
+                    {
+                        $t = array_shift($list2);
+
+                        //忽略角色
+                        $t['gift'] = ConsumptionService::instance()->showActivityGifts($activity_id);
+                        unset($t['challege_config_id']);
+
+                    }else{
+                        continue;
+                    }
+
+                    //
+                    if($t['is_receive'] != UserConsumptionLog::RECEIVE_YES)
+                    {//当前任务未启用或未领取，显示这个
+                        $list1[$v['base_activity_id']]['disable'] = 1;
+                        $is_show = 1;
+                    }elseif($t['is_receive'] == UserConsumptionLog::RECEIVE_YES && $v['base_activity_id'] == 0)
+                    {
+                        $is_show = 1;
+                    }elseif($t['is_receive'] == UserConsumptionLog::RECEIVE_YES && $v['base_activity_id'] > 0)
+                    {
+                        $is_show = 0;
+                    }
+                    if($is_show)
+                    {
+                        $t['tab_id'] = $tab_id;
+
+                        $t['redirect_id'] = intval($t['redirect_id']);
+                        $t['activity_id'] = intval($activity_id);
+                        $t['total_num'] = isset( $t['total_num'])? intval($t['total_num']):0;
+                        $t['achieve_num'] = isset( $t['achieve_num'])? $t['achieve_num']:0;
+                        $t['is_receive'] = isset( $t['is_receive'])? intval($t['is_receive']):0;
+                        $t['gift'] = isset( $t['gift'])? $t['gift']:[];
+                        if(empty($this->end_time))
+                            $this->end_time = $t['end_time'];
+                        if(empty($this->start_time))
+                            $this->start_time = $t['start_time'];
+                        unset($t['start_time'],$t['end_time']);
+                        $result[] = $t;
+                    }
+
+                }else{
+                    $list1[$v['base_activity_id']]['disable'] = 1;
+                }
+
+
+            }
+
+        }
+        return isset($result)?$result:[];
+    }
+    private function getCrossList($uid,$tab_id)
+    {
+        $list1 = CrossChallegeGift::instance()->getListByTabId($tab_id);
+
+        if($list1)
+        {
+            $tmp=[];
+            foreach($list1 as $k=>$v)
+            {
+                if(ActivityCategory::instance()->isActive($v['activity_id']))
+                    $tmp[$v['activity_id']] = $v;
+            }
+            $list1 = $tmp;
+
+            foreach($list1 as $activity_id=>$v)
+            {
+
+                if(!isset($list1[$activity_id]['disable']) )
+                {
+                    $list2 = CrossChallegeService::instance()->showJoinStatus($uid,$activity_id,date("Ym"));
+                    if($list2)
+                    {
+                        $t = array_shift($list2);
+                        //忽略角色
+                        $t['gift'] = CrossChallegeService::instance()->showActivityGifts($activity_id);
+                        unset($t['challege_config_id'],$t['achieve_status']);
+
+                    }else{
+                        continue;
+                    }
+                    //
+                    if($t['is_receive'] != UserConsumptionLog::RECEIVE_YES)
+                    {//当前任务未启用或未领取，显示这个
+                        $list1[$v['base_activity_id']]['disable'] = 1;
+                        $is_show = 1;
+                    }elseif($t['is_receive'] == UserConsumptionLog::RECEIVE_YES &&  $v['base_activity_id']  == 0)
+                    {
+                        $is_show = 1;
+                    }elseif($t['is_receive'] == UserConsumptionLog::RECEIVE_YES &&  $v['base_activity_id']  > 0)
+                    {
+                        $is_show = 0;
+                    }
+                    if($is_show)
+                    {
+//                        $t['tab_id'] = $tab_id;
+//                        $t['redirect_id'] = intval($t['redirect_id']);
+                        $t['activity_id'] = intval($activity_id);
+                        $t['total_num'] = isset( $t['total_num'])?intval($t['total_num']):0;
+                        $t['achieve_num'] = isset( $t['achieve_num'])? $t['achieve_num']:0;
+                        $t['is_receive'] = isset( $t['is_receive'])? intval($t['is_receive']):0;
+                        $t['gift'] = isset( $t['gift'])? $t['gift']:[];
+                        if(empty($this->end_time))
+                            $this->end_time = $t['end_time'];
+                        if(empty($this->start_time))
+                            $this->start_time = $t['start_time'];
+                        unset($t['start_time'],$t['end_time']);
+                        $result[] = $t;
+                    }
+
+                }else{
+                    $list1[$v['base_activity_id']]['disable'] = 1;
+                }
+
+
+            }
+
+        }
+        return isset($result)?$result:[];
+    }
+    public function getList($uid)
+    {
+        $tabList = ActivityTabSetting::instance()->getAll();
+        foreach($tabList as $k=>$t)
+        {
+            $result[] = $this->checkRules($uid,$this->getListByTabId($uid,$t['id']));
+        }
+        return isset($result)?$result:[];
+    }
+    public function receiveGift($uid,$activity_id)
+    {
+
+
+        $type = EveryDayTaskService::instance()->getActivityType($activity_id);
+        switch($type)
+        {
+            case EveryDayTaskService::CONSUMPTION_TYPE:
+                $ret = ConsumptionService::instance()->receiveGift($uid,$activity_id,date('Ym'));
+                if($ret['code'] == Code::SUCCESS)
+                {
+                    $next_activity_id = ConsumptionGift::instance()->getNextActivityId($activity_id);
+                    if(!$next_activity_id)
+                    {
+                        return array('code'=>Code::SUCCESS,'msg'=>'领取成功','data'=>[]);
+                    }
+                    $list2 = ConsumptionService::instance()->showJoinStatus($uid,$next_activity_id,date("Ym"));
+                    if($list2)
+                    {
+                        $t = array_shift($list2);
+                        //忽略角色
+                        $t['gift'] = ConsumptionService::instance()->showActivityGifts($next_activity_id);
+                        unset($t['challege_config_id'],$t['achieve_status']);
+                        $t['activity_id'] = intval($next_activity_id);
+                        $t['total_num'] = isset( $t['total_num'])? $t['total_num']:0;
+                        $t['achieve_num'] = isset( $t['achieve_num'])? $t['achieve_num']:0;
+                        $t['is_receive'] = isset( $t['is_receive'])? intval($t['is_receive']):0;
+                        $t['gift'] = isset( $t['gift'])? $t['gift']:[];
+                        return array('code'=>Code::SUCCESS,'msg'=>'领取成功','data'=>$t);
+                    }
+                }
+                return array('code'=>$ret['code'],'msg'=>$ret['msg'],'data'=>$ret['data']);
+                break;
+            case EveryDayTaskService::CROSS_CHALLEGE_TYPE:
+
+                $ret =  CrossChallegeService::instance()->receiveGift($uid,$activity_id,date('Ym'));
+                if($ret['code'] == Code::SUCCESS)
+                {
+                    $next_activity_id = CrossChallegeGift::instance()->getNextActivityId($activity_id);
+                    if(!$next_activity_id)
+                    {
+                        return array('code'=>Code::SUCCESS,'msg'=>'领取成功','data'=>[]);
+                    }
+                    $list2 = CrossChallegeService::instance()->showJoinStatus($uid,$next_activity_id,date("Ym"));
+                    if($list2)
+                    {
+                        $t = array_shift($list2);
+                        //忽略角色
+                        $t['gift'] = CrossChallegeService::instance()->showActivityGifts($next_activity_id);
+                        unset($t['challege_config_id'],$t['achieve_status']);
+                        $t['activity_id'] = intval($next_activity_id);
+                        $t['total_num'] = isset( $t['total_num'])? $t['total_num']:0;
+                        $t['achieve_num'] = isset( $t['achieve_num'])? $t['achieve_num']:0;
+                        $t['is_receive'] = isset( $t['is_receive'])? intval($t['is_receive']):0;
+                        $t['gift'] = isset( $t['gift'])? $t['gift']:[];
+                        return array('code'=>Code::SUCCESS,'msg'=>'领取成功','data'=>$t);
+                    }
+                }
+                return array('code'=>$ret['code'],'msg'=>$ret['msg'],'data'=>$ret['data']);
+                break;
+//            case EveryDayTaskService::FUNCTION_TYPE:
+//
+//                $ret =  FunctionService::instance()->receiveGift($uid,$activity_id,date('Ym'));
+//                return $ret;
+//                break;
+//            case EveryDayTaskService::SOCIAL_TYPE:
+//
+//                $ret =  SocialService::instance()->receiveGift($uid,$activity_id,date('Ym'));
+//                return $ret;
+//                break;
+            default:
+                Logger::write('活动类型不支持领取奖励','receiveGift default',"ERROR");
+                return array('code'=>Code::NOT_ALLOWED_OPERATION,'msg'=>'活动类型不支持领取奖励','data'=>[]);
+
+        }
+
+    }
+
+    /**
+     * @desc 获取活动列表可领取奖励状态
+     * @param $uid
+     * @return bool true represent 有可领取的活动奖励,false没有
+     */
+    public function getGiftStatus($uid)
+    {
+        $result = $this->getList($uid);
+        if(!isset($result) || empty($result))
+            return false;
+        $counts = 0;
+        foreach($result as $k=>$giftList)
+        {
+            foreach($giftList['items'] as $k1=>$gift)
+            {
+                if($gift['is_receive'] == 2)
+                {
+                    $counts ++;
+                }
+            }
+        }
+        return $counts;
+    }
+
+    /**
+     * @desc 检查月活动是否在显示规则内
+     * @param $uid
+     * @param $activityList
+     */
+    public function checkRules($uid,$activityList)
+    {
+        $activityItemList = $activityList['items'];
+        $aG = UserGame::instance()->getOne($uid);
+        if(!$aG)
+        {
+            Logger::write("当获取用户信息错误时,不显示活动");
+            return [];
+        }
+        //玩家级别 1普通玩家2高级玩家',
+        $player_type = $aG['player_type_force']>0?intval($aG['player_type_force']):intval($aG['player_type']);
+        $aG = User::instance()->getUBase($uid);
+        //渠道号
+        $unid = $aG['unid'];
+        //省份
+        $region_id = $aG['region_id'];
+        $cate = ActivityCategory::instance()->getAll();
+        $tmpList=[];
+        foreach($cate as $k=>$item)
+        {
+            $item['parent_id'] == 32 && $tmpList[$item['activity_id']] = $item;
+        }
+        if(empty($tmpList))
+        {
+            return [];
+        }
+        $ruleList = $tmpList;unset($cate,$tmpList);
+        $result=[];
+        foreach($activityItemList as $k=>$item)
+        {
+
+            $row = isset($ruleList[$item['activity_id']])?$ruleList[$item['activity_id']]:[];
+            if($row)
+            {
+                if(ATCode::USER_LEVEL_NO_LIMIT == $row['user_level']
+                || (ATCode::USER_LEVEL_NORMAL == $row['user_level'])
+                || ($player_type >=$row['user_level']))
+                {
+                    $channels = json_decode($row['channel_id_str'],true);
+
+                    $provinces = isset($channels[$unid])?$channels[$unid]:[];
+                    if((!empty($provinces) && in_array($region_id,$provinces) && ActivityControl::instance()->isActive($row['activity_control_id'])&& ActivityChannel::instance()->isActive($unid))
+                    || (!($region_id))
+                    )
+                    {
+                        $result[] = $item;
+                    }else{
+                        Logger::write("活动id：{$item['activity_id']}不满足在activitycategory表中的渠道号或省份",__METHOD__,"ERROR");
+                    }
+                }else{
+                    Logger::write("活动id：{$item['activity_id']}不满足在activitycategory表中的用户级别",__METHOD__,"ERROR");
+                }
+            }else{
+                Logger::write("活动id：{$item['activity_id']}在activitycategory表中未设置",__METHOD__,"ERROR");
+            }
+        }
+        $activityList['items'] = $result;
+        return $activityList;
+    }
+
+    public function test()
+    {
+        $province=[210000,220000,230000,320000,330000,340000,350000,360000,370000,410000,420000,430000,440000,450000,460000,500000,510000,520000,530000,540000,610000,620000,630000,640000,650000,710000,810000,820000];
+        $list = ActivityChannel::instance()->getAll();
+        foreach ( $list as $item) {
+            if(ActivityChannel::instance()->isActive($item['channel_id']))
+            {
+                $result[$item['channel_no']]=$province;
+            }
+        }
+        return $result;
+
+    }
+
+} 

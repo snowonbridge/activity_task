@@ -1,0 +1,35 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: nihao
+ * Date: 2017/12/28
+ * Time: 18:57
+ */
+
+namespace Workerman\Model;
+
+
+use Workerman\Lib\Model;
+use Workerman\Lib\Okey;
+use Workerman\Service\ATCode;
+
+class FaControlAreaSetting extends Model{
+
+    public $db = 'cms';
+    public $table = 'fa_control_area_setting';
+
+    /**
+     * 获取区域控制设置
+     * @param $app_id
+     * @return array|int|mixed
+     */
+    public function getControlAreaSetting($app_id){
+        if(empty($app_id)) return 0;
+        $result = ATCode::getCache(Okey::rControlAreaSetting($app_id),function($app_id){
+            $list = $this->getRows($this->table,"status=1 AND app_id=:app_id",[":app_id"=>$app_id]);
+            return $list?json_encode($list,JSON_UNESCAPED_UNICODE):false;
+        },[$app_id]); //从缓存中取信息--后期必要时改成hash
+
+        return json_decode($result,true);
+    }
+}

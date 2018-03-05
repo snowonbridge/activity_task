@@ -1,0 +1,56 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: nihao
+ * Date: 17-9-15
+ * Time: 上午11:53
+ */
+
+namespace Workerman\Model;
+
+
+use Workerman\Lib\Model;
+use Workerman\Lib\Okey;
+use Workerman\Service\ATCode;
+
+class ActivityTabSetting extends Model{
+
+    public $db = 'activity';
+    public $table = 'activity_tab_setting';
+
+    public function getName($id)
+    {
+        $r = $this->getAll();
+        $r = array_filter($r,function($v)use($id){
+            if($v['id'] == $id)
+                return true;
+            else
+                false;
+        });
+        $r = array_values($r)[0];
+        return $r?$r['title']:'';
+    }
+    public function getAll()
+    {
+        $result = ATCode::getCache(Okey::getActivityTabSetting(),function(){
+            $result =  $this->getRows($this->table);
+            return $result?$result:false;
+        });
+        if(!$result)
+            return array();
+        foreach($result as $k=>$v)
+        {
+            $r[$v['id']] = $v;
+        }
+        return $r;
+    }
+    /**
+     * @desc 缓存清除
+     * @return int
+     */
+    public function rmCache()
+    {
+        return ATCode::rmCache(Okey::getActivityTabSetting());
+    }
+
+} 

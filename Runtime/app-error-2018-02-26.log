@@ -1,0 +1,7 @@
+
+[Workerman\Lib\ErrorListener::shutdownLog ERROR 2018-02-26 16:20:29] 'array (
+  \'type\' => 1,
+  \'message\' => \'Call to undefined method Workerman\\\\Connection\\\\TcpConnection::destroy()\',
+  \'file\' => \'/vagrant/develop/activity_task/Connection/TcpConnection.php\',
+  \'line\' => 573,
+)'

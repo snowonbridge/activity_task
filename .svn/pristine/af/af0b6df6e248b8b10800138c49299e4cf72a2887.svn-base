@@ -1,0 +1,45 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: nihao
+ * Date: 2017/12/28
+ * Time: 18:56
+ */
+
+namespace Workerman\Model;
+
+
+use Workerman\Lib\Model;
+use Workerman\Lib\Okey;
+use Workerman\Service\ATCode;
+
+class FaControlAppList extends Model{
+
+    public $db = 'cms';
+    public $table = 'fa_control_app_list';
+
+
+    /**
+     * 获取游戏 app_id
+     * @param $sid
+     * @param $version
+     * @return int
+     */
+    public function getControlAppId($sid,$version){
+
+        $result = ATCode::getCache(Okey::rControlAppList($sid),function($sid){
+            $list = $this->getRows($this->table,"status=1 AND  sid=:sid",[":sid"=>$sid]);
+            return $list?json_encode($list,JSON_UNESCAPED_UNICODE):false;
+        },[$sid]); //从缓存中取信息--后期必要时改成hash
+        $result =  json_decode($result,true);
+        if($result){
+            foreach($result as $v){
+                if($version == $v['version']){
+                    return $v['id'];
+                }
+            }
+        }else{
+            return 0;
+        }
+    }
+}

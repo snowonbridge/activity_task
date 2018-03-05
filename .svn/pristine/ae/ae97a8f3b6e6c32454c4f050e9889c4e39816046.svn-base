@@ -1,0 +1,429 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: nihao
+ * Date: 17-10-13
+ * Time: 下午5:40
+ */
+
+namespace Workerman\Service;
+
+
+use Workerman\Lib\Code;
+use Workerman\Lib\Controller;
+use Workerman\Lib\Logger;
+use Workerman\Lib\Model;
+use Workerman\Lib\Okey;
+use Workerman\Lib\Redis;
+use Workerman\Model\TurnExchangeLog;
+use Workerman\Model\TurnGiftRateLog;
+use Workerman\Model\TurnGiftSetting;
+use Workerman\Model\TurnLotterySetting;
+use Workerman\Model\TurnUserLog;
+use Workerman\Model\TurnUserLuckyValue;
+use Workerman\Model\UserExchangeLog;
+use Workerman\Model\UserGame;
+use Workerman\Service\ATCode;
+use Workerman\Service\GiftService;
+
+class TurnLotteryService extends Model {
+
+    public function getList()
+    {
+        $allGifts = TurnGiftSetting::instance()->getAll();
+        $lotteryList = TurnLotterySetting::instance()->getAll();
+        foreach($allGifts as $k=>$v)
+        {
+            $allGifts[$k]['id'] = (int)$allGifts[$k]['id'] ;
+            $allGifts[$k]['gift_content_id'] = (int)$allGifts[$k]['gift_content_id'] ;
+            unset($allGifts[$k]['level'],$allGifts[$k]['sort'],$allGifts[$k]['base_rate'],$allGifts[$k]['lucky_value'],$allGifts[$k]['create_time']);
+        }
+        foreach($lotteryList as $k=>$v)
+        {
+            $lotteryList[$k]['id'] = (int)$lotteryList[$k]['id'] ;
+            $lotteryList[$k]['diamond'] = (int)$lotteryList[$k]['diamond'] ;
+            $lotteryList[$k]['counts'] = (int)$lotteryList[$k]['counts'] ;
+        }
+        return ['gift_list'=>array_values($allGifts),'lottery_list'=>$lotteryList];
+    }
+
+
+    /**
+     * @param $uid
+     * @param int $lottery_id 兑换钻石换转盘次数的配置id
+     * @return bool
+     */
+    public function lottery($uid,$lottery_id=0)
+    {
+        $allGifts = TurnGiftSetting::instance()->getAll();
+        if(!$allGifts)
+        {
+            Logger::write("未获取到奖励表",__METHOD__,"ERROR");
+            return ['code'=>Code::DATAEXCEPTION,'msg'=>'未获取到奖励表','data'=>[]];
+        }
+
+
+        if(  !$lottery_id)
+        {//免费抽奖
+            $isNotFirstTurn = TurnUserLuckyValue::instance()->isNotFirstTurn($uid);
+            if(!$isNotFirstTurn)
+            {//第一次免费转
+                $results = $this->multiFreeLottery($uid,['id'=>0,'diamond'=>0,'counts'=>1]);//暂时固定
+                return ['msg'=>'获取列表','code'=>Code::SUCCESS,'data'=>$results];
+            }else{
+                return ['msg'=>'不能免费多次抽奖','code'=>Code::NOT_ALLOWED_OPERATION,'data'=>[]];
+            }
+
+
+
+        }else{//兑换钻石抽奖
+
+
+            $lottery = TurnLotterySetting::instance()->getOne($lottery_id);
+            if(!$lottery)
+            {
+                return ['msg'=>'抽奖配置不存在','code'=>Code::NOT_ALLOWED_OPERATION,'data'=>[]];
+            }
+            $res = GiftService::instance()->reduceDiamond($uid,$lottery['diamond']);
+            if(!$res)
+            {
+                return ['msg'=>'钻石不够','code'=>Code::DIAMONDNOTENOUGHT,'data'=>[]];
+            }
+
+            $results = $this->multiPayLottery($uid,$lottery);
+
+            return ['msg'=>'获取列表','code'=>Code::SUCCESS,'data'=>$results];
+        }
+    }
+
+    /**
+     * @desc 单次抽奖
+     * ML = int(M*(100+A/100*100)/100)   白送型
+     * ML = int(M*(100+A/100*50)/100)   大众型
+     * ML = int(M*(100+A/100*30)/100)   普通型
+     * ML = int(M*(100+A/100*20)/100)   稀有型
+     * @param $uid
+     * @param $giftList
+     */
+    public function singleFreeLottery($uid,$giftList)
+    {
+        //计算出抽中的奖品配置id
+        $result = $this->calFreeGift($uid,$giftList);
+       if(!$result)
+       {
+           return false;
+       }
+        $giftSettingId = $result['gift_setting_id'];
+
+        $giftItem = array_filter($giftList,function($v)use($giftSettingId){
+            if($v['id'] == $giftSettingId)
+            {
+                return true;
+            }else{
+                return false;
+            }
+        });
+        $giftItem = array_shift($giftItem);
+        return ['gift_item'=>$giftItem,'gift_log'=>$result];
+    }
+    public function singlePayLottery($uid,$giftList)
+    {
+        //计算出抽中的奖品配置id
+        $result = $this->calPayGift($uid,$giftList);
+        if(!$result)
+        {
+            return false;
+        }
+        $giftSettingId = $result['gift_setting_id'];
+        $giftItem = array_filter($giftList,function($v)use($giftSettingId){
+            if($v['id'] == $giftSettingId)
+            {
+                return true;
+            }else{
+                return false;
+            }
+        });
+        $giftItem = array_shift($giftItem);
+        return ['gift_item'=>$giftItem,'gift_log'=>$result];
+    }
+
+    /**
+     * 多次免费抽奖
+     * @param $uid
+     * @param int $turnCounts
+     */
+    public function multiFreeLottery($uid,$lottery)
+    {
+        $allGifts = TurnGiftSetting::instance()->getAll();
+        $i = 0;
+        $ins = array();
+        $ins['uid'] = $uid;
+        $ins['lottery_id'] = $lottery['id'];
+        $ins['diamond'] = $lottery['diamond'];
+        $ins['counts'] = $lottery['counts'];
+        $ins['create_time'] = time();
+        $exchange_id = TurnExchangeLog::instance()->addLog($ins);
+        while($i < $lottery['counts'])
+        {
+            $lottery_log = $this->singleFreeLottery($uid,$allGifts);
+            if($lottery_log)
+            {
+                $data=array();
+                //把抽中的奖励记录到日志，先写缓存，会由定时器同步到日志表
+                $data['uid'] = $uid;
+                $data['gift_setting_id'] = $lottery_log['gift_item']['id'];
+                $data['expect_min_value'] = $lottery_log['gift_log']['expect_min_value'][$data['gift_setting_id']];
+                $data['expect_max_value'] = $lottery_log['gift_log']['expect_max_value'][$data['gift_setting_id']];
+                $data['exchange_id'] =  $exchange_id;
+                $data['turn_counts'] = $i+1;
+                $data['gift_content_id'] = $lottery_log['gift_item']['gift_content_id'];
+                $data['gift_num'] = $lottery_log['gift_item']['num'];
+                $data['create_time'] = time();
+                $gifts[$i+1] = $data ;
+                TurnUserLog::instance()->addLog2Redis($data);
+                $data1 = array();
+                $data1['uid'] = $uid;
+                $data1['gift_content_id'] = $lottery_log['gift_item']['gift_content_id'];
+                $data1['desc'] = '转盘抽奖活动';
+                $data1['clmode'] = ATCode::CLMODE_ACTIVITY_TURN;
+                $data1['num'] = $lottery_log['gift_item']['num'];
+                GiftService::instance()->add2Redis($data1);
+                $data2=array();
+                foreach($lottery_log['gift_log']['rate_list'] as $gift_setting_id=>$rate)
+                {
+                    $t = array();
+                    $t['uid'] = $uid;
+                    $t['exchange_id'] = $exchange_id;
+                    $t['gift_setting_id'] = $gift_setting_id;
+                    $t['gift_content_id'] = $allGifts[$gift_setting_id]['gift_content_id'];
+                    $t['gift_num'] =  $allGifts[$gift_setting_id]['num'];
+                    $t['lucky_value'] = $lottery_log['gift_log']['lucky_value_list'][$gift_setting_id];
+                    $t['expect_min_value'] = $lottery_log['gift_log']['expect_min_value'][$gift_setting_id];
+                    $t['expect_max_value'] = $lottery_log['gift_log']['expect_max_value'][$gift_setting_id];
+                    $t['rate'] =  $rate;
+                    $t['turn_counts'] =   $i+1;
+                    $t['create_time'] =   time();
+                    $data2[] = $t;
+                }
+                TurnGiftRateLog::instance()->addLog($data2);
+            }
+            $i++;
+        }
+        $result['gift_list'] = $this->getGiftResult(isset($gifts)?$gifts:[]);
+        foreach($gifts as $k=>$v)
+        {
+            $t=array();
+           $t['id'] = (int)$v['gift_setting_id'];
+            $result['gift_ids'][] = $t;
+        }
+        return  $result;
+    }
+    /**
+     * 多次免费抽奖
+     * @param $uid
+     * @param int $turnCounts
+     */
+    public function multiPayLottery($uid,$lottery)
+    {
+        $allGifts = TurnGiftSetting::instance()->getAll();
+        $i = 0;
+        $ins = array();
+        $ins['uid'] = $uid;
+        $ins['lottery_id'] = $lottery['id'];
+        $ins['diamond'] = $lottery['diamond'];
+        $ins['counts'] = $lottery['counts'];
+        $ins['create_time'] = time();
+        $exchange_id = TurnExchangeLog::instance()->addLog($ins);
+        while($i < $lottery['counts'])
+        {
+            $lottery_log = $this->singlePayLottery($uid,$allGifts);
+            if($lottery_log)
+            {
+                $data=array();
+                //把抽中的奖励记录到日志，先写缓存，会由定时器同步到日志表
+                $data['uid'] = $uid;
+                $data['gift_setting_id'] = $lottery_log['gift_item']['id'];
+                $data['expect_min_value'] = $lottery_log['gift_log']['expect_min_value'][$data['gift_setting_id']];
+                $data['expect_max_value'] = $lottery_log['gift_log']['expect_max_value'][$data['gift_setting_id']];
+                $data['exchange_id'] =  $exchange_id;
+                $data['turn_counts'] = $i+1;
+                $data['gift_content_id'] = $lottery_log['gift_item']['gift_content_id'];
+                $data['gift_num'] = $lottery_log['gift_item']['num'];
+                $data['create_time'] = time();
+                $gifts[$i+1] = $data ;
+                TurnUserLog::instance()->addLog2Redis($data);
+                $data1 = array();
+                $data1['uid'] = $uid;
+                $data1['gift_content_id'] = $lottery_log['gift_item']['gift_content_id'];
+                $data1['desc'] = '转盘抽奖活动';
+                $data1['clmode'] = ATCode::CLMODE_ACTIVITY_TURN;
+                $data1['num'] = $lottery_log['gift_item']['num'];
+                GiftService::instance()->add2Redis($data1);
+                $data2=array();
+                foreach($lottery_log['gift_log']['rate_list'] as $gift_setting_id=>$rate)
+                {
+                    $t = array();
+                    $t['uid'] = $uid;
+                    $t['exchange_id'] = $exchange_id;
+                    $t['gift_setting_id'] = $gift_setting_id;
+                    $t['gift_content_id'] = $allGifts[$gift_setting_id]['gift_content_id'];
+                    $t['gift_num'] =  $allGifts[$gift_setting_id]['num'];
+                    $t['lucky_value'] = $lottery_log['gift_log']['lucky_value_list'][$gift_setting_id];
+                    $t['lucky_value'] = $lottery_log['gift_log']['lucky_value_list'][$gift_setting_id];
+                    $t['expect_min_value'] = $lottery_log['gift_log']['expect_min_value'][$gift_setting_id];
+                    $t['expect_max_value'] = $lottery_log['gift_log']['expect_max_value'][$gift_setting_id];
+
+                    $t['rate'] =  $rate;
+                    $t['turn_counts'] =   $i+1;
+                    $t['create_time'] =   time();
+                    $data2[] = $t;
+                }
+                TurnGiftRateLog::instance()->addLog($data2);
+
+            }
+            $i++;
+        }
+        $result['gift_list'] = $this->getGiftResult(isset($gifts)?$gifts:[]);
+        foreach($gifts as $k=>$v)
+        {
+            $t=array();
+            $t['id'] = (int)$v['gift_setting_id'];
+            $result['gift_ids'][] = $t;
+        }
+        return  $result;
+    }
+
+    public function calFreeGift($uid,$giftList)
+    {
+        $giftLuchyValues = TurnUserLuckyValue::instance()->getGiftsLuckyValues($uid);
+        $idsArr = array_column($giftList,'id');
+        foreach($giftList as $item)
+        {
+            if($item['level'] == ATCode::TURN_GIFT_LEVEL_1)
+            {
+//                Logger::write("TURN_GIFT_LEVEL_1 intval({$item['base_rate']}*(100+{$giftLuchyValues[$item['id']]}] /100*100)/100)",__METHOD__,'INFO');
+                $rateValue[] =intval($item['base_rate']*(100+$giftLuchyValues[$item['id']] /100*100)/100);
+            }elseif($item['level'] == ATCode::TURN_GIFT_LEVEL_2)
+            {
+//                Logger::write("TURN_GIFT_LEVEL_2 intval({$item['base_rate']}*(100+{$giftLuchyValues[$item['id']]}] /100*50)/100)",__METHOD__,'INFO');
+                $rateValue[] =intval($item['base_rate']*(100+$giftLuchyValues[$item['id']] /100*50)/100);
+            }elseif($item['level'] == ATCode::TURN_GIFT_LEVEL_3)
+            {
+//                Logger::write("TURN_GIFT_LEVEL_3 intval({$item['base_rate']}*(100+{$giftLuchyValues[$item['id']]}] /100*30)/100)",__METHOD__,'INFO');
+                $rateValue[] =intval($item['base_rate']*(100+$giftLuchyValues[$item['id']] /100*30)/100);
+            }elseif($item['level'] == ATCode::TURN_GIFT_LEVEL_4)
+            {
+//                Logger::write("TURN_GIFT_LEVEL_4 intval({$item['base_rate']}*(100+{$giftLuchyValues[$item['id']]}] /100*20)/100)",__METHOD__,'INFO');
+
+                $rateValue[] =intval($item['base_rate']*(100+$giftLuchyValues[$item['id']] /100*20)/100);
+            }
+        }
+
+        if(isset($rateValue) && count($rateValue) == count($idsArr))
+        {
+            $sum = array_sum($rateValue);
+            mt_srand();
+            $dstV=0;
+            $randomValue = mt_rand(1,$sum);
+            foreach($rateValue as $k=>$v)
+            {
+                $dstV += $v;
+                if(($dstV-$v)<$randomValue && $randomValue <=$dstV)
+                {
+                    $result['gift_setting_id'] = $idsArr[$k];//定位到哪个奖品gift_setting_id
+//                    $result['expect_min_value'] = $dstV-$v;
+//                    $result['expect_max_value'] = $dstV;
+
+                    TurnUserLuckyValue::instance()->clearValue($uid,$idsArr[$k]);
+                }else{
+                    TurnUserLuckyValue::instance()->updateValue($uid,$idsArr[$k]);
+                }
+                $result['rate_list'][ $idsArr[$k]] = ($v)/$sum;
+                $result['expect_min_value'][ $idsArr[$k]] = $dstV-$v;
+                $result['expect_max_value'][ $idsArr[$k]] = $dstV;
+                $result['lucky_value_list'][ $idsArr[$k]] = TurnUserLuckyValue::instance()->getValueByUid($uid,$idsArr[$k]);
+            }
+            return isset($result)?$result:false;
+        }else{
+            Logger::write("获取幸运概率计算数组失败",__METHOD__,"ERROR");
+            return false;
+        }
+    }
+
+    public function calPayGift($uid,$giftList)
+    {
+        $giftLuchyValues = TurnUserLuckyValue::instance()->getGiftsLuckyValues($uid);
+        $idsArr = array_column($giftList,'id');
+        foreach($giftList as $item)
+        {
+            if($item['level'] == ATCode::TURN_GIFT_LEVEL_1)
+            {
+                $rateValue[] =intval($item['base_rate']*(100+$giftLuchyValues[$item['id']] /100*100)/100);
+            }elseif($item['level'] == ATCode::TURN_GIFT_LEVEL_2)
+            {
+                $rateValue[] =intval($item['base_rate']*1.5*(100+$giftLuchyValues[$item['id']] /100*50)/100);
+            }elseif($item['level'] == ATCode::TURN_GIFT_LEVEL_3)
+            {
+                $rateValue[] =intval($item['base_rate']*2*(100+$giftLuchyValues[$item['id']] /100*30)/100);
+            }elseif($item['level'] == ATCode::TURN_GIFT_LEVEL_4)
+            {
+                $rateValue[] =intval($item['base_rate']*2.5*(100+$giftLuchyValues[$item['id']] /100*20)/100);
+            }
+        }
+
+
+        if(isset($rateValue) && count($rateValue) == count($idsArr))
+        {
+            $sum = array_sum($rateValue);
+            mt_srand();
+            $dstV=0;
+            $randomValue = mt_rand(1,$sum);
+
+            foreach($rateValue as $k=>$v)
+            {
+                $dstV += $v;
+                if(($dstV-$v)<$randomValue && $randomValue <=$dstV)
+                {
+                    $result['gift_setting_id'] = $idsArr[$k];//定位到哪个奖品gift_setting_id
+//                    $result['expect_min_value'] = $dstV-$v;
+//                    $result['expect_max_value'] = $dstV;
+                    TurnUserLuckyValue::instance()->clearValue($uid,$idsArr[$k]);
+                }else{
+                    TurnUserLuckyValue::instance()->updateValue($uid,$idsArr[$k]);//
+                }
+                $result['expect_min_value'][ $idsArr[$k]] = $dstV-$v;
+                $result['expect_max_value'][ $idsArr[$k]] = $dstV;
+                $result['rate_list'][ $idsArr[$k]] = ($v)/$sum;
+                $result['lucky_value_list'][ $idsArr[$k]] = TurnUserLuckyValue::instance()->getValueByUid($uid,$idsArr[$k]);
+            }
+            return isset($result)?$result:false;
+        }else{
+            Logger::write("获取幸运概率计算数组失败",__METHOD__,"ERROR");
+            return false;
+        }
+    }
+    public function getGiftResult($giftLists)
+    {
+        foreach($giftLists as $gift)
+        {
+            if(!isset($result[$gift['gift_content_id']]))
+            {
+                $result[$gift['gift_content_id']] = 0;
+            }
+            $result[$gift['gift_content_id']] += $gift['gift_num'];
+        }
+        foreach($result as $k =>$v)
+        {
+            $s['gift_content_id'] = (int)$k;
+            if($k == ATCode::GIFT_ROOMCARD)
+            {
+                $s['num'] = (int)$v*10;
+            }else{
+                $s['num'] = (int)$v;
+
+            }
+            $results[] = $s;
+        }
+        return $results;
+    }
+} 
