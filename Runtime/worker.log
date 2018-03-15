@@ -1,5 +1,8 @@
-2018-02-28 12:58:46 pid:9979 Workerman[cli_start.php] start in DEBUG mode
-2018-02-28 13:13:00 pid:9979 Workerman[cli_start.php] Stopping ...
-2018-02-28 13:13:02 pid:9979 worker[dealTurnGiftList:9984] exit with status 9
-2018-02-28 13:13:02 pid:9979 worker[dealTurnUserLogList:9985] exit with status 9
-2018-02-28 13:13:02 pid:9979 Workerman[cli_start.php] has been stopped
+2018-03-15 10:23:27 pid:7509 Workerman[cli_start.php] Stopping ...
+2018-03-15 10:23:29 pid:7509 worker[dev_worker_task:7510] exit with status 9
+2018-03-15 10:23:29 pid:7509 worker[dev_worker_task:7511] exit with status 9
+2018-03-15 10:23:29 pid:7509 worker[dev_worker_task:7512] exit with status 9
+2018-03-15 10:23:29 pid:7509 worker[dev_worker_task:7513] exit with status 9
+2018-03-15 10:23:29 pid:7509 worker[dealTurnGiftList:7514] exit with status 9
+2018-03-15 10:23:29 pid:7509 worker[dealTurnUserLogList:7515] exit with status 9
+2018-03-15 10:23:29 pid:7509 Workerman[cli_start.php] has been stopped

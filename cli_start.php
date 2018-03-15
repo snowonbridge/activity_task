@@ -60,6 +60,18 @@ $work3->onWorkerStart = function($worker)
     \Workerman\Lib\ErrorListener::register();
     \Workerman\Lib\Timer::add(3600*6,'deleteLogs',null,true);
 };
+$work4 = new \Workerman\Worker();
+$work4->count = 1;
+$work4->name = 'dealExpireTool';
+
+$work4->onWorkerStart = function($worker)
+{
+    \Workerman\Lib\Timer::add(0.02,function(){
+        \Workerman\Controller\TaskDispatcher::instance()->dealExpireTool();
+    },null,true);
+    \Workerman\Lib\ErrorListener::register();
+
+};
 //定时删除日志文件
  function deleteLogs()
 {

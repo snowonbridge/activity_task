@@ -9,4 +9,7 @@
 require_once 'Autoloader.php';
 define('CFG_PATH',__DIR__.'/Config/');
 define('RUNTIME_PATH',__DIR__.'/Runtime/');
-\Workerman\Lib\FileCache::getInstance()->rm('RGIFTMONTHSETTING');
+\Workerman\Lib\FileCache::getInstance()->rm('AT_3|11');
+\Workerman\Lib\FileCache::getInstance()->rm('AT_3|12');
+\Workerman\Lib\Redis::getIns()->delete('AT_3|11');
+\Workerman\Lib\Redis::getIns()->delete('AT_3|12');
