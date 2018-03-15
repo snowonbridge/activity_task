@@ -581,6 +581,117 @@ class Model {
         return $result;
     }
     public static $selfIns;
+    /**
+     * @desc 插入一条数据
+     * @param string $table
+     * @param array $data
+     * @return bool|string
+     */
+    private function insertRaw($table,$data=array())
+    {
+        if(empty($table) || empty($data))
+        {
+            Logger::write('insert数据库 参数非法','model_insert','error');
+            return false;
+        }
+        $cols = $vals='';
+        foreach($data as $key =>$val)
+        {
+            $cols .= ",`{$key}`";
+            if(is_numeric($val))
+                $vals .=  ",$val";
+            elseif(is_string($val))
+            {
+                $val = trim($val,',');
+                $vals .=  ",'{$val}'";
+            }
+        }
+        $cols = trim($cols,',');
+        $vals = trim($vals,',');
+        $sql = "insert into `{$table}`($cols) value($vals)";
+        try{
 
+            $rows =  $this->db($this->db)->exec($sql);
+            return $rows;
+        }catch (PDOException $e)
+        {
+            Logger::write($sql,__METHOD__,'ERROR');
+            return false;
+        }
+    }
+    /**
+     * @desc 插入一条数据
+     * @param string $table
+     * @param array $data
+     * @return bool|string
+     */
+    private function queryAll($table,$where='',$w_params=array(),$columns='*')
+    {
+        $sels = '';
+        if(is_array($columns))
+        {
+            foreach($columns as $item)
+            {
+                $sels .= ",`{$item}`";
+            }
+            $sels = trim($sels,',');
+        }
+        if(!$sels)
+        {
+            $sels = "*";
+        }
+        $where = !$where?'1':$where;
+        $sql = "select /*parallel*/{$sels} from `{$table}` where {$where} ";
+        $w_params = array_map(function($v){
+            if(is_string($v))
+                return "'{$v}'";
+            return $v;
+        },$w_params);
+        $sql = str_replace(array_keys($w_params),array_values($w_params),$sql);
+//        Logger::write($sql,__METHOD__,'INFO');
+        try{
+            $pdo_stat = $this->db($this->db)->query($sql);
+            $result = $pdo_stat->fetchAll(\PDO::FETCH_ASSOC);
+            return $result;
+        }catch (PDOException $e)
+        {
+            Logger::write($e->getMessage().'sql:'.$sql,__METHOD__,'ERROR');
+            return false;
+        }
+    }
+    private function queryOne($table,$where='',$w_params=array(),$columns='*')
+    {
+        $sels = '';
+        if(is_array($columns))
+        {
+            foreach($columns as $item)
+            {
+                $sels .= ",`{$item}`";
+            }
+            $sels = trim($sels,',');
+        }
+        if(!$sels)
+        {
+            $sels = "*";
+        }
+        $where = !$where?'1':$where;
+        $sql = "select {$sels} from `{$table}` where {$where} limit 1";
+        $w_params = array_map(function($v){
+            if(is_string($v))
+                return "'{$v}'";
+            return $v;
+        },$w_params);
+        $sql = str_replace(array_keys($w_params),array_values($w_params),$sql);
+//        Logger::write($sql,__METHOD__,'INFO');
+        try{
+            $pdo_stat = $this->db($this->db)->query($sql);
+            $result = $pdo_stat->fetch(\PDO::FETCH_ASSOC);
+            return $result;
+        }catch (PDOException $e)
+        {
+            Logger::write($e->getMessage().'sql:'.$sql,__METHOD__,'ERROR');
+            return false;
+        }
+    }
 
-} 
+}

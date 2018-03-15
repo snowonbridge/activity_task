@@ -77,7 +77,7 @@ class MonthTaskService extends Model{
             $t['redirect_id'] = intval($t['redirect_id']);
             $t['activity_id'] = intval($activity_id);
             $t['total_num'] = isset( $t['total_num'])? intval($t['total_num']):0;
-            $t['achieve_num'] = isset( $t['achieve_num'])? $t['achieve_num']:0;
+            $t['achieve_num'] = isset( $t['achieve_num'])?(int)$t['achieve_num']:0;
             $t['is_receive'] = isset( $t['is_receive'])? intval($t['is_receive']):0;
             $t['gift'] = isset( $t['gift'])? $t['gift']:[];
             return $t;

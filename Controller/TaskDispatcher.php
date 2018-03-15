@@ -20,11 +20,14 @@ use Workerman\Lib\Okey;
 use Workerman\Lib\Redis;
 use Workerman\Lib\Timer;
 use Workerman\Model\ActivityCategory;
+use Workerman\Model\GiftLog;
+use Workerman\Model\ToolOperateLog;
 use Workerman\Model\TurnUserLog;
 use Workerman\Model\UserEverydayActivityLog;
 use Workerman\Service\ATCode;
 use Workerman\Service\ConsumptionService;
 use Workerman\Service\CrossChallegeService;
+use Workerman\Service\DataLogService;
 use Workerman\Service\FunctionService;
 use Workerman\Service\GiftService;
 use Workerman\Service\SocialService;
@@ -211,11 +214,214 @@ jsondata;
         return false;
     }
 
-    public function test()
+    /**
+     * @desc 处理存在有效时长的道具
+     * 暂时只需要处理两种记牌器，110,111
+     */
+    public function dealExpireTool()
     {
+        $data = Redis::getIns()->lIndex(Okey::rToolExpireList(),-1);
+        if(!$data)
+        {
+            Logger::write('lIndex 超时失败',__METHOD__,'ERROR');
+            return false;
+        }
+        //必备参数验证
+        if($diff = array_diff(['uid','ttid','expire_time'],array_keys($data)))
+        {
+            Logger::write("缺少参数".json_encode($diff)." redis数据为".json_encode($data),__METHOD__,'ERROR');
+            return false;
+        }
+        $now = time();
+        if($data['expire_time'] <=$now)
+        {//获取时已到过期时间，记录到数据库
+            Redis::getIns()->brPop(Okey::rToolExpireList());
+            DataLogService::instance()->toolExpireLogLoop($data);
+        }else{
+            Redis::getIns()->bRpoplpush(Okey::rToolExpireList(),Okey::rToolExpireList());
+        }
 
     }
 
+
+    /**
+     * @tag new
+     * @desc 更新好友邀请同房游戏状态
+     * @return bool|void
+     */
+    public function dealInviteStatus()
+    {
+//        $this->putInviteList();//test
+        $data = Redis::getIns()->blPop(Okey::rGameInviteLogList());
+        if(false === $data)
+        {
+            Logger::write('blPop 超时失败',__METHOD__,'ERROR');
+            return false;
+        }
+
+        //必备参数验证
+        if($diff = array_diff(['game_id','game_type_id','game_room_id','uid','friend_uid','invite_time'],array_keys($data)))
+        {
+            Logger::write("缺少参数".json_encode($diff)." redis数据为".json_encode($data),__METHOD__,'ERROR');
+            return false;
+        }
+        $ret =DataLogService::instance()->updateToolUsingStatus($data);
+        return false;
+    }
+
+    /**
+     * @desc 处理道具的使用，购买日志
+     * @return bool
+     */
+    public function dealToolLog()
+    {
+        $data = Redis::getIns()->blPop(Okey::rToolLogList ());
+        if(false === $data)
+        {
+            Logger::write('blPop 超时  失败',__METHOD__,'ERROR');
+            return false;
+        }
+        if(!$data['operate_type'])
+        {
+            Logger::error("operate_type参数必须存在".json_encode($data),__METHOD__,'ERROR');
+        }
+
+        if($data['operate_type'] == ToolOperateLog::OPERATE_TYPE_GET)
+        {
+            //必备参数验证
+            if($diff = array_diff(['uid','ttid','before_num','after_num','operate_time'],array_keys($data)))
+            {
+                Logger::write("缺少参数".json_encode($diff)." redis数据为".json_encode($data),__METHOD__,'ERROR');
+                return false;
+            }
+            DataLogService::instance()->toolPurchaseLogLoop($data);
+        }elseif($data['operate_type'] == ToolOperateLog::OPERATE_TYPE_USE)
+        {
+            //必备参数验证
+            if($diff = array_diff(['uid','ttid'],array_keys($data)))
+            {
+                Logger::write("缺少参数".json_encode($diff)." redis数据为".json_encode($data),__METHOD__,'ERROR');
+                return false;
+            }
+            DataLogService::instance()->toolUseLogLoop($data);
+        }
+        return true;
+    }
+
+    /**
+
+     * reason   礼物操作日志处理
+     * operate_time
+     */
+    public function dealGiftLog()
+    {
+        $data = Redis::getIns()->blPop(Okey::rGiftLogList());
+        if(false === $data)
+        {
+            Logger::write('blPop 失败',__METHOD__,'ERROR');
+            return false;
+        }
+        if(!$data['operate_type'])
+        {
+            Logger::error("operate_type参数必须存在".json_encode($data),__METHOD__,'ERROR');
+        }
+
+        if($data['operate_type'] == GiftLog::OPERATE_TYPE_SELL)
+        {
+            //必备参数验证
+            if($diff = array_diff(['uid','gift_auto_id','before_num','after_num','operate_time','reason'],array_keys($data)))
+            {
+                Logger::write("缺少参数".json_encode($diff)." redis数据为".json_encode($data),__METHOD__,'ERROR');
+                return false;
+            }
+            DataLogService::instance()->giftSellLogLoop($data);
+        }elseif($data['operate_type'] == GiftLog::OPERATE_TYPE_RECV)
+        {
+            //必备参数验证
+            if($diff = array_diff(['uid','gift_auto_id','before_num','after_num','give_uid'],array_keys($data)))
+            {
+                Logger::write("缺少参数".json_encode($diff)." redis数据为".json_encode($data),__METHOD__,'ERROR');
+                return false;
+            }
+            DataLogService::instance()->giftRecvLogLoop($data);
+        }elseif($data['operate_type'] == GiftLog::OPERATE_TYPE_PRESENT)
+        {
+            //必备参数验证
+            if($diff = array_diff(['uid','gift_id','m_type','before_num','after_num','give_uid','reason','operate_time'],array_keys($data)))
+            {
+                Logger::write("缺少参数".json_encode($diff)." redis数据为".json_encode($data),__METHOD__,'ERROR');
+                return false;
+            }
+            DataLogService::instance()->giftPresentLogLoop($data);
+        }
+        return true;
+    }
+
+    /**
+     * @desc 好友操作日志处理
+     * @return bool
+     */
+    public function dealFriendLog()
+    {
+        $data = Redis::getIns()->blPop(Okey::rFriendLogList());
+        if(false === $data)
+        {
+            Logger::write('blPop 超时失败',__METHOD__,'ERROR');
+            return false;
+        }
+        //必备参数验证
+        if($diff = array_diff(['apply_id','f_operate_id','t_operate_id'],array_keys($data)))
+        {
+            Logger::write("缺少参数".json_encode($diff)." redis数据为".json_encode($data),__METHOD__,'ERROR');
+            return false;
+        }
+        DataLogService::instance()->friendLogLoop($data);
+
+        return true;
+    }
+
+
+
+
+    public function putInviteList()
+    {
+        $params = <<<jsondata
+{"uid":10444,"friend_uid":12356,"invite_time":1515756369}
+jsondata;
+        $params = json_decode($params,true);
+        $r = Redis::getIns()->rPush(Okey::rGameInviteLogList(),$params);
+        if(!$r)
+        {
+            var_export('rpush 失败');
+        }
+    }
+    public function pushToolList()
+    {
+        $params = <<<jsondata
+{"operate_type":3,"uid":10444,"ttid":12356}
+jsondata;
+        $params = json_decode($params,true);
+        $r = Redis::getIns()->rPush(Okey::rToolLogList(),$params);
+        if(!$r)
+        {
+            var_export('rpush 失败');
+        }
+    }
+    public function pushExpireLog()
+    {
+        $now = time()+20;
+        $params = <<<jsondata
+{"uid":21,"ttid":213,"expire_time":{$now}}
+jsondata;
+        $params = json_decode($params,true);
+        $r = Redis::getIns()->lPush(Okey::rToolExpireList(),$params);
+        $params = <<<jsondata
+{"uid":33,"ttid":213,"expire_time":{$now}}
+jsondata;
+        $params = json_decode($params,true);
+        $r = Redis::getIns()->lPush(Okey::rToolExpireList(),$params);
+
+    }
 
 
 

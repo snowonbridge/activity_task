@@ -17,7 +17,7 @@ return [
     'user' => [
         'host' => '127.0.0.1',
         'port' => 3306,
-        'dbname' => 'local_poker',//local_poker
+        'dbname' => 'poker',//local_poker
         'user' => 'root',
         'password' => 'root',
         'charset' => 'utf8',
@@ -25,7 +25,7 @@ return [
     'money' => [
         'host' => '127.0.0.1',
         'port' => 3306,
-        'dbname' => 'local_poker',
+        'dbname' => 'poker',
         'user' => 'root',
         'password' => 'root',
         'charset' => 'utf8',
@@ -76,6 +76,22 @@ return [
         'host' => '127.0.0.1',
         'port' => 3306,
         'dbname' => 'cms',
+        'user' => 'root',
+        'password' => 'root',//root
+        'charset' => 'utf8',
+    ],
+    'oneproxy_slog' => [//日志数据库配置
+        'host' => '192.168.33.11',//'127.0.0.1',
+        'port' => 3307,
+        'dbname' => 'slog',
+        'user' => 'root',
+        'password' => 'root',//root
+        'charset' => 'utf8',
+    ],
+    'slog' => [//日志数据库配置
+        'host' => '192.168.33.11',//'127.0.0.1',
+        'port' => 3306,
+        'dbname' => 'slog',
         'user' => 'root',
         'password' => 'root',//root
         'charset' => 'utf8',

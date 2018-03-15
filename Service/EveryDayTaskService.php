@@ -96,8 +96,8 @@ class EveryDayTaskService extends Model{
             }else{
                 continue;
             }
-            $t['total_num'] = isset( $t['total_num'])? $t['total_num']:0;
-            $t['achieve_num'] = isset( $t['achieve_num'])? $t['achieve_num']:0;
+            $t['total_num'] = isset( $t['total_num'])? (int)$t['total_num']:0;
+            $t['achieve_num'] = isset( $t['achieve_num'])? (int)$t['achieve_num']:0;
             $t['achieve_status'] = isset( $t['achieve_status'])? $t['achieve_status']:0;
             $t['is_receive'] = isset( $t['is_receive'])? intval($t['is_receive']):0;
             $t['gift'] = isset( $t['gift'])? $t['gift']:[];

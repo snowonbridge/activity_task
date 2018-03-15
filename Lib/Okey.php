@@ -15,6 +15,7 @@ class Okey {
     const EX_ONE_MINUTE=60;//
     const EX_HALF_MINUTE=30;//
     const EX_ONE_MONTH=2678400;
+
     static function rIpLimit(){ return "RIPLIMIT";}
     static  function rU($uid){ return "RU|{$uid}";}
     static function rUid( $openid, $pf ) { return "UID|{$openid}|{$pf}"; } //用户信息key
@@ -378,4 +379,42 @@ class Okey {
 
     //控制-时间策略
     public static function rControlTimeCommonSetting() { return 'CONTROL_TIME_COMMON_SETTING'; }//string
+
+    public static function ToolById($ttid)
+    {
+        return "AT_40|$ttid";
+    }
+
+    public static function ToolNum($uid,$tool_id)
+    {
+        return    "AT_41|$uid|$tool_id";
+    }
+
+    //ToolUsedNum
+    public static function ToolUsedNum($uid,$tool_id)
+    {
+        return    "AT_42|$uid|$tool_id";
+    }
+    public static function rGameInviteLogList()
+    {
+        return 'AT_INVITE_GAME_LIST';
+    }
+    public static function rToolLogList()
+    {
+        return 'AT_TOOL_LOG_LIST';
+    }
+    public static function rGiftLogList()
+    {
+        return 'AT_GIFT_LOG_LIST';
+    }
+    public static function rFriendLogList()
+    {
+        return 'AT_FRIEND_LOG_LIST';
+    }
+    public static function rToolExpireList()
+    {
+        return 'AT_TOOL_EXPIRE_LOG_LIST';
+    }
+
+
 } 

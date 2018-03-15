@@ -80,4 +80,20 @@ return [
         'password' => 'soulgame2017',//root
         'charset' => 'utf8',
     ],
+    'oneproxy_slog' => [//日志数据库配置
+        'host' => '192.168.33.11',//'127.0.0.1',
+        'port' => 3307,
+        'dbname' => 'slog',
+        'user' => 'root',
+        'password' => 'root',//root
+        'charset' => 'utf8',
+    ],
+    'slog' => [//日志数据库配置
+        'host' => '127.0.0.1',
+        'port' => 3306,
+        'dbname' => 'slog',
+        'user' => 'root',
+        'password' => 'root',//root
+        'charset' => 'utf8',
+    ],
 ];

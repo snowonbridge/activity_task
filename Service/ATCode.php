@@ -10,6 +10,7 @@ namespace Workerman\Service;
 
 
 use Workerman\Lib\FileCache;
+use Workerman\Lib\Logger;
 use Workerman\Lib\Okey;
 use Workerman\Lib\Redis;
 use Workerman\Model\GiftContentSetting;
@@ -26,9 +27,8 @@ class  ATCode{
 //
 //    //渠道名称
 //
-    const CLMODE_ACTIVITY_TASK=16;
-    const CLMODE_WIN_STREAK = 17;//启用
-    const CLMODE_ACTIVITY_TURN= 18;
+    const CLMODE_ACTIVITY_TASK=16;//活动任务
+    const CLMODE_ACTIVITY_TURN= 18;//转盘抽奖
 
     /**
      * 动作id配置
@@ -172,8 +172,16 @@ class  ATCode{
     }
     public static function rmCache($key)
     {
-        FileCache::getInstance()->rm($key);
-        return Redis::getIns()->delete($key);
+        $b = FileCache::getInstance()->rm($key);
+        if(!$b)
+        {
+            Logger::error("FileCache delete Fail $key",__METHOD__);
+        }
+        $b = Redis::getIns()->delete($key);
+        if(!$b)
+        {
+            Logger::error("RedisCache delete Fail $key",__METHOD__);
+        }
     }
     public static function transToMoney($diamond_num=0)
     {
@@ -202,5 +210,62 @@ class  ATCode{
     public static function money2Diamond($money)
     {
         return (int)($money*2);
+    }
+    /**
+     * @param $game_id
+     * @param $game_type_id
+     * @param $game_room_id
+     */
+    public static  function getLocationText($game_id,$game_type_id,$game_room_id)
+    {
+        $gameText = [ATCode::GAME_ID_ZJH=>'扎金花',ATCode::GAME_ID_LHD=>'龙虎斗',ATCode::GAME_ID_NIUNIU=>'牛牛',ATCode::GAME_ID_DDZ=>'斗地主',ATCode::GAME_ID_MJ=>'麻将'];
+        $gameTypeText = [
+            10=>'扎金花经典金币场',
+            11=>'扎金花房卡场',
+            12=>'扎金花百人场',
+            13=>'扎金花必下场',
+            14=>'扎金花保留',
+            15=>'扎金花棋牌室',
+            16=>'扎金花私人房间',
+
+            20=>'斗牛经典金币场',
+            21=>'斗牛抢庄金币场',
+            25=>'斗牛房卡场',
+            26=>'斗牛抢庄房卡场',
+            28=>'斗牛棋牌室',
+            29=>'斗牛抢庄棋牌室',
+
+            30=>'斗地主经典金币场',
+            31=>'斗地主换3张金币场',
+            32=>'斗地主癞子金币场',
+            34=>'斗地主换3张棋牌室',
+            35=>'斗地主经典房卡场',
+            36=>'斗地主换3张房卡场',
+            37=>'斗地主癞子房卡场',
+            38=>'斗地主经典棋牌室',
+            39=>'斗地主癞子棋牌室',
+
+            40=>'麻将血战金币场',
+            41=>'麻将血战换3张金币场',
+            42=>'麻将血流金币场',
+            43=>'麻将血流换3张金币场',
+            45=>'麻将血战房卡场',
+            46=>'麻将血战棋牌室',
+            47=>'麻将血流房卡场',
+            48=>'麻将血流棋牌室',
+        ];
+        $gameRoomText = [1=>'初级场',2=>'中级场',3=>'高级场'];
+        return (isset($gameTypeText[$game_type_id])?$gameTypeText[$game_type_id]:'未知').'-'.(isset($gameRoomText[$game_room_id])?$gameRoomText[$game_room_id]:'未知');
+    }
+    public static function getGiftName($gift_id)
+    {
+        $list =[
+            1 => ['name' => '小车', 'id' => 1, 'desc' => '小车可兑换48000金币', 'price' => 60000, 'discount' => 0.8, 'vip' => 0, 'sell' => 1, 'on' => 1],
+            2 => ['name' => '轮船', 'id' => 2, 'desc' => '轮船可兑换120000金币', 'price' => 150000, 'discount' => 0.8, 'vip' => 0, 'sell' => 1, 'on' => 1],
+            3 => ['name' => '飞机', 'id' => 3, 'desc' => '飞机可兑换480000金币', 'price' => 600000, 'discount' => 0.8, 'vip' => 0, 'sell' => 1, 'on' => 1],
+            4 => ['name' => '爱心', 'id' => 4, 'desc' => '爱心可兑换2400金币', 'price' => 3000, 'discount' => 0.8, 'vip' => 0, 'sell' => 0, 'on' => 1],
+            5 => ['name' => '鸡蛋', 'id' => 5, 'desc' => '鸡蛋可兑换2400金币', 'price' => 3000, 'discount' => 0.8, 'vip' => 0, 'sell' => 0, 'on' => 1],
+        ];
+        return $list[$gift_id]['name'];
     }
 } 

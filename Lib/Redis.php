@@ -15,13 +15,17 @@ class Redis{
     private  $connect = false; //是否连接上
     private $connected = false; //是否已经连接过
     public static  $connections = array();//连接实例
-    private  function __construct($name) {
+
+    private $dbIndex = 0;
+    const RDDB_INDEX_1 = 1;
+    private  function __construct($name,$dbIndex) {
         if (!class_exists('Redis')) { //强制使用
             throw new \RuntimeException('This Lib Requires The Redis Extention!');
             return false;
         }
         self::$currentName = $name;
-        $this->oRedis = self::$connections[self::$currentName]?:null;
+        $this->oRedis = isset(self::$connections[self::$currentName])?self::$connections[self::$currentName]:null;
+        $this->dbIndex = $dbIndex;
 
     }
 
@@ -210,6 +214,38 @@ class Redis{
         $value = ($zip && function_exists('gzcompress')) ? gzcompress($value) : $value;
         return $this->oRedis->rPush($key, $value);
     }
+    private function lPush($key, $value, $zip = false, $serial = true) {
+
+        $value = $serial ? serialize($value) : $value;
+        $value = ($zip && function_exists('gzcompress')) ? gzcompress($value) : $value;
+        return $this->oRedis->lPush($key, $value);
+    }
+    private function brPop($key,$timeout=15)
+    {
+
+        $r = $this->oRedis->brPop($key,$timeout);
+        if(!$r)
+            return false;
+        if(is_string($r[1]))
+        {
+            $r =  unserialize($r[1]);
+
+            return $r;
+        }
+
+        return  false;
+    }
+    private function lIndex( $key, $index,$serial = true )
+    {
+        $value = $this->oRedis->lIndex($key, $index);
+        $value = $serial ? unserialize($value) : $value;
+        return $value;
+    }
+    private function bRpoplpush($srcKey, $dstKey, $timeout=15)
+    {
+        return $this->oRedis->brpoplpush($srcKey, $dstKey,$timeout);
+    }
+
     // use
     private function hExists($hash,$key)
     {
@@ -298,6 +334,15 @@ class Redis{
 
         return  false;
     }
+    private function select($dbIndex=0)
+    {
+        $r = $this->oRedis->select($dbIndex);
+        if(!$r)
+        {
+            Logger::write("选择redis db index $dbIndex  发生异常",__METHOD__,"ERROR");
+        }
+        return $r;
+    }
 
     public function __call($name,  $arguments)
     {
@@ -360,6 +405,7 @@ class Redis{
                 $redis->auth($auth);
             }
             $this->oRedis = $redis;
+            $this->select($this->dbIndex);
 
             self::$connections[self::$currentName] = $redis;
             return $redis;
@@ -378,13 +424,13 @@ class Redis{
      * @return Redis
      * @throws \BadMethodCallException
      */
-    public static function getIns($name='user')
+    public static function getIns($name='user',$dbIndex=0)
     {
 
 
         if(isset(self::$ins))
             return self::$ins;
-        self::$ins = new Redis($name);
+        self::$ins = new Redis($name,$dbIndex);
         return  self::$ins;
     }
 

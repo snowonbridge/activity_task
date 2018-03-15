@@ -13,6 +13,7 @@ use Workerman\Lib\Logger;
 use Workerman\Lib\Model;
 use Workerman\Lib\Okey;
 use Workerman\Lib\Redis;
+use Workerman\Service\ATCode;
 
 class UserTool extends Model
 {
@@ -119,6 +120,26 @@ class UserTool extends Model
     {
         Redis::getIns('log')->delete(Okey::rUserTool($uid,'All'));
         Redis::getIns('log')->delete(Okey::rUserTool($uid,'Counter'));
+    }
+
+    /**
+     * 这个方法最好用来取不会被改变的数据
+     * @param $ttid
+     * @return false|mixed
+     */
+
+    public function getToolById($ttid)
+    {
+        return  ATCode::getCache(Okey::ToolById($ttid),function($ttid){
+            $r = $this->getRow($this->table,"ttid=:ttid",[":ttid"=>$ttid]);
+            return $r?$r:[];
+        },[$ttid],Okey::EX_ONE_MINUTE,true);
+    }
+
+    public function getToolNum($uid,$tool_id)
+    {
+        $ret = $this->count($this->table,'uid=:uid  AND tlid=:tlid AND status=0  ',[':uid'=>$uid,':tlid'=>$tool_id]);
+        return $ret===false ? 0 : $ret;
     }
 
 

@@ -138,4 +138,50 @@ class GiftContentSetting extends Model{
             return true;
         return false;
     }
+    public function getName($id)
+    {
+        $gift_Info = $this->getOne($id);
+        return isset($gift_Info['name'])?$gift_Info['name']:'';
+    }
+
+    /**
+     * @desc 获取道具有效时长，一次性使用类型道具返回0
+     * @param $tood_id
+     * @return int
+     */
+    public function getToolDuration($tool_id)
+    {
+        switch($tool_id)
+        {
+            case 110://记牌器I
+                return 120;
+            case 111://记牌器II
+                return 24*60;
+            case 112://记牌器III
+                return PHP_INT_MAX;
+            case 117://禁比卡
+                return 0;
+            default:
+                return 0;
+
+        }
+    }
+    public function getToolExpiration($tool_id,$begin_time)
+    {
+        switch($tool_id)
+        {
+            case 110://记牌器I
+                return $begin_time + $this->getToolDuration($tool_id);
+            case 111://记牌器II
+                return $begin_time + $this->getToolDuration($tool_id);
+            case 112://记牌器III
+                return PHP_INT_MAX;
+            case 117://禁比卡
+                return $begin_time;
+            default:
+                return 0;
+
+        }
+
+    }
 } 

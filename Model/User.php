@@ -61,4 +61,9 @@ class User extends Model{
         $aP = array_merge($aPcache, (array)$aP);
         return $aP;
     }
+    public function getName($uid)
+    {
+        $userInfo = $this->getUBase($uid);
+        return isset($userInfo)?$userInfo:array();
+    }
 } 
