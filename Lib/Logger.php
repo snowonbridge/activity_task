@@ -40,7 +40,7 @@ class Logger {
         {
             $sql = str_replace(array_keys($sqlparams),array_values($sqlparams),$sql);
         }
-        $content = "\n[{$category}  {$time} sql] $sql";
+        $content = "\n[{$category}  {$time}] $sql";
         file_put_contents($fileName,$content,FILE_APPEND);
 
     }

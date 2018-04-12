@@ -1,0 +1,8 @@
+
+[Workerman\Lib\Model::getRow  2018-03-27 15:57:07 sql] select `mid`,`sid` from `poker_user_map` where uid=10056  limit 1
+[Workerman\Lib\Model::getRow  2018-03-27 15:57:07 sql] select * from `user_checkin_days_log` where uid=10056 and rule_id= order by cycles desc ,update_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-27 15:57:07 sql] select * from `user_checkin_days_log` where uid=10056 and rule_id= order by cycles desc ,update_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-27 15:57:07 sql] select * from `user_checkin_days_log` where uid=10056 and rule_id= order by cycles desc ,update_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-27 15:57:07 sql] select * from `user_checkin_days_log` where uid=10056 and rule_id= order by cycles desc ,update_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-27 15:57:07 sql] select * from `user_checkin_days_log` where uid=10056 and rule_id= order by cycles desc ,update_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-27 15:57:07 sql] select * from `user_checkin_days_log` where uid=10056 and rule_id= order by cycles desc ,update_time desc  limit 1

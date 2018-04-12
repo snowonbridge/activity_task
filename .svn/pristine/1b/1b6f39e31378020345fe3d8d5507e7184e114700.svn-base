@@ -1,0 +1,42 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: nihao
+ * Date: 2018/3/28
+ * Time: 10:49
+ */
+
+namespace Workerman\Service;
+
+
+use Workerman\Lib\Code;
+use Workerman\Lib\Logger;
+use Workerman\Lib\Model;
+use Workerman\Model\FirstchargeSetting;
+use Workerman\Model\UserFirstchargeLog;
+
+class FirstChargeService extends Model
+{
+    public function get($uid,$platform_id,$channel_id)
+    {
+        if(!$uid || !$platform_id || !$channel_id)
+        {
+            Logger::write("参数非法",__METHOD__,"ERROR");
+            return ['code'=>Code::CODEERRPARAM,'msg'=>"参数非法 ".json_encode(func_get_args()),'data'=>[]];
+        }
+        if(UserFirstchargeLog::instance()->has($uid))
+        {
+            Logger::write('已购买过首充'.json_encode(func_get_args()),__METHOD__,"ERROR");
+            return ['code'=>Code::NOT_ALLOWED_OPERATION,'msg'=>"已购买过首充",'data'=>[]];
+        }
+
+        $result = FirstchargeSetting::instance()->getOne($channel_id,$platform_id);
+
+        return ['code'=>Code::SUCCESS,'msg'=>"获取首充配置",'data'=>$result];
+    }
+
+
+
+
+
+}

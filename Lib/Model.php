@@ -23,6 +23,16 @@ class Model {
     protected $prefix;
     private $transactions = 0;
     public $db_configs;
+
+    /**
+     * 所有的db key
+     */
+    const DB_CMS = 'cms';
+    const DB_SLOG = 'slog';
+    const DB_ACTIVITY = 'activity';
+    const DB_POKER = 'user';
+    const DB_ONEPROXY_SLOG = 'oneproxy_slog';
+    const DB_FIRSTLOGIN = 'firstlogin';
     public function __construct($db='')
     {
         if($db)
@@ -253,7 +263,7 @@ class Model {
             $sels = "*";
         }
         $sql = "select {$sels} from `{$table}` where {$where}  limit 1";
-        //Logger::sql($sql,$w_params,__METHOD__);
+        Logger::sql($sql,$w_params,__METHOD__);
         try{
             $pdo_stat = $this->db($this->db)->prepare($sql);
             if(!$pdo_stat)
@@ -348,6 +358,7 @@ class Model {
         }
         $vals = trim($vals,',');
         $sql = "update `{$table}` set $vals where {$where}";
+        Logger::sql($sql,$w_params,__METHOD__,"INFO");
         try{
 
             $pdo_stat = $this->db($this->db)->prepare($sql);
@@ -478,7 +489,7 @@ class Model {
     /**
      * 事物提交
      */
-    private  function commit()
+    public  function commit()
     {
 
         if ($this->transactions == 1)
@@ -494,7 +505,7 @@ class Model {
     /**
      * 事物回滚
      */
-    private function rollBack()
+    public function rollBack()
     {
         if ($this->transactions == 1)
         {
@@ -690,6 +701,27 @@ class Model {
         }catch (PDOException $e)
         {
             Logger::write($e->getMessage().'sql:'.$sql,__METHOD__,'ERROR');
+            return false;
+        }
+    }
+
+    private function sum($table,$where,$w_params,$field)
+    {
+        $sql="SELECT SUM(`{$field}`) as s from `{$table}` WHERE {$where}";
+        try{
+            $pdo_stat = $this->db($this->db)->prepare($sql);
+            if(!$pdo_stat)
+            {
+                Logger::sql($sql,$w_params,'error');
+                return 0;
+            }
+            empty($w_params) &&  $pdo_stat->execute() ||$pdo_stat->execute($w_params)  ;
+
+            $sum =  $pdo_stat->fetch(\PDO::FETCH_ASSOC);
+            return $sum['s'];
+        }catch (\PDOException $e)
+        {
+            Logger::write($e->getMessage()."sql:$sql",'sum','error');
             return false;
         }
     }

@@ -1,0 +1,40 @@
+
+[model_insert error 2018-04-04 16:07:07] 'insert数据库 参数非法'
+[model_insert error 2018-04-04 16:07:07] 'insert数据库 参数非法'
+[model_insert error 2018-04-04 16:07:07] 'insert数据库 参数非法'
+[Workerman\Service\VipService::recv ERROR 2018-04-04 16:07:07] '添加预领取日志失败'
+[model_insert error 2018-04-04 16:07:07] 'insert数据库 参数非法'
+[model_insert error 2018-04-04 16:07:07] 'insert数据库 参数非法'
+[model_insert error 2018-04-04 16:07:07] 'insert数据库 参数非法'
+[Workerman\Service\VipService::recv ERROR 2018-04-04 16:07:07] '添加预领取日志失败'
+[model_insert error 2018-04-04 16:08:40] 'insert数据库 参数非法'
+[model_insert error 2018-04-04 16:08:40] 'insert数据库 参数非法'
+[model_insert error 2018-04-04 16:08:40] 'insert数据库 参数非法'
+[Workerman\Service\VipService::recv ERROR 2018-04-04 16:08:40] '添加预领取日志失败'
+[model_insert error 2018-04-04 16:10:21] 'insert数据库 参数非法'
+[model_insert error 2018-04-04 16:10:21] 'insert数据库 参数非法'
+[model_insert error 2018-04-04 16:10:21] 'insert数据库 参数非法'
+[Workerman\Service\VipService::recv ERROR 2018-04-04 16:10:21] '添加预领取日志失败'
+[Workerman\Lib\Curl::sendJsonToServer ERROR 2018-04-04 16:11:38] '同步用户货币操作失败：array (
+  \'params\' => 
+  array (
+    0 => 10326,
+    1 => 0,
+  ),
+  \'url\' => \'http://127.0.0.1:49179/service.htm\',
+  \'response\' => NULL,
+)'
+[Workerman\Service\VipService::recv INFO 2018-04-04 16:26:02] '用户 1 不需要补足'
+[Workerman\Service\VipService::recv INFO 2018-04-04 16:26:02] '用户 117 不需要补足'
+[Workerman\Service\VipService::recv INFO 2018-04-04 16:26:55] '用户 1 不需要补足'
+[Workerman\Service\VipService::recv INFO 2018-04-04 16:26:55] '用户 117 不需要补足'
+[Workerman\Lib\Curl::sendJsonToServer ERROR 2018-04-04 16:29:44] '同步用户货币操作失败：array (
+  \'params\' => 
+  array (
+    0 => 10326,
+    1 => 0,
+  ),
+  \'url\' => \'http://127.0.0.1:49179/service.htm\',
+  \'response\' => NULL,
+)'
+[Workerman\Service\VipService::recv INFO 2018-04-04 16:29:44] '用户 117 不需要补足'

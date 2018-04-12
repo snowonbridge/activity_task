@@ -1,0 +1,25 @@
+
+[Workerman\Lib\Model::getRow  2018-03-29 10:16:28 sql] select `mid`,`sid` from `poker_user_map` where uid=10326  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:16:28 sql] select * from `poker_user` where id=10218  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:16:28 sql] select * from `user_newhand_log` where uid=10326 and times !=0 order by  create_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:16:28 sql] select * from `user_newhand_log` where uid=10326 and day_time=20180329 order by  create_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:16:29 sql] select `mid`,`sid` from `poker_user_map` where uid=10326  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:16:29 sql] select * from `poker_user` where id=10218  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:16:29 sql] select * from `user_newhand_log` where uid=10326 and times !=0 order by  create_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:16:29 sql] select * from `user_newhand_log` where uid=10326 and day_time=20180329 order by  create_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:17:04 sql] select `mid`,`sid` from `poker_user_map` where uid=10326  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:17:04 sql] select * from `poker_user` where id=10218  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:17:04 sql] select * from `user_newhand_log` where uid=10326 and times !=0 order by  create_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:17:04 sql] select * from `user_newhand_log` where uid=10326 and day_time=20180329 order by  create_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:19:06 sql] select `mid`,`sid` from `poker_user_map` where uid=10326  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:19:06 sql] select * from `poker_user` where id=10218  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:19:06 sql] select * from `user_newhand_log` where uid=10326 and times !=0 order by  create_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 10:19:06 sql] select * from `user_newhand_log` where uid=10326 and day_time=20180329 order by  create_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 15:31:26 sql] select `mid`,`sid` from `poker_user_map` where uid=10326  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 15:31:26 sql] select * from `poker_user` where id=10218  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 15:31:26 sql] select * from `user_newhand_log` where uid=10326 and times !=0 order by  create_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 15:31:26 sql] select * from `user_newhand_log` where uid=10326 and day_time=20180329 order by  create_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 15:31:30 sql] select `mid`,`sid` from `poker_user_map` where uid=10326  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 15:31:30 sql] select * from `poker_user` where id=10218  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 15:31:30 sql] select * from `user_newhand_log` where uid=10326 and times !=0 order by  create_time desc  limit 1
+[Workerman\Lib\Model::getRow  2018-03-29 15:31:30 sql] select * from `user_newhand_log` where uid=10326 and day_time=20180329 order by  create_time desc  limit 1

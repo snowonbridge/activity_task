@@ -1,0 +1,4 @@
+<?php
+//000000000060
+ exit();?>
+a:37:{s:2:"id";s:5:"10239";s:3:"uid";s:5:"10326";s:4:"chip";s:7:"1000000";s:11:"coffer_chip";s:1:"0";s:6:"ulevel";s:1:"0";s:3:"exp";s:1:"0";s:3:"vip";s:2:"12";s:8:"roomcard";s:1:"0";s:7:"diamond";s:1:"0";s:10:"activetime";s:10:"1509810619";s:6:"invite";s:1:"0";s:5:"ldays";s:1:"0";s:6:"cldays";s:1:"0";s:8:"prestige";s:1:"0";s:6:"gameid";s:1:"0";s:6:"charge";s:8:"68889.00";s:14:"prestige_level";s:1:"0";s:11:"mentercount";s:1:"0";s:6:"wincnt";s:1:"0";s:7:"losecnt";s:1:"0";s:7:"drawcnt";s:1:"0";s:7:"lwincnt";s:1:"0";s:5:"hlwin";s:1:"0";s:9:"zjh_level";s:1:"0";s:8:"mj_level";s:1:"0";s:8:"nn_level";s:1:"0";s:11:"texas_level";s:1:"0";s:9:"ddz_level";s:1:"0";s:9:"lhd_level";s:1:"0";s:13:"subsidy_count";s:1:"0";s:23:"novitiate_receive_count";s:1:"0";s:11:"sid_regtime";s:1:"0";s:17:"total_online_time";s:1:"0";s:11:"player_type";s:1:"1";s:17:"player_type_force";s:1:"0";s:11:"online_time";s:1:"0";s:9:"chip_flow";s:1:"0";}

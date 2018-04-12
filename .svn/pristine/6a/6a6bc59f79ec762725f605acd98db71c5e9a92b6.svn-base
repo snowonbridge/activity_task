@@ -1,0 +1,118 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: nihao
+ * Date: 2018/3/27
+ * Time: 15:10
+ */
+
+namespace Workerman\Controller;
+
+
+use Workerman\Lib\Controller;
+use Workerman\Service\CheckInService;
+
+class CheckIn extends Controller
+{
+    /**
+     * @api {get} /check-in/get-list  签到奖励列表
+     * @apiName  /chck-in/get-list
+     * @apiGroup check-in 日常签到
+     *@apiSampleRequest url  http://测试服地址:9009/check-in/get-list?
+
+     * @apiParam {int} uid 用户id （两个参数都是现有的参数,不需要添加）【必传】
+     * @apiParam {int} system 系统ID 【必传】
+     *
+     * @apiSuccess {Number} code  响应编码
+     * @apiSuccess {String} msg 信息注解
+     * @apiSuccess {Object} data 数据
+     * @apiSuccess {int} total_days 总天数
+     * @apiSuccess {int} days 已签到天数
+     * @apiSuccess {object} gift_list 礼物列表
+     * @apiSuccess {int} is_receive 领取状态 1-Y,0 -N
+     * @apiSuccess {int} day_nd 第几天
+     *
+     * @apiSuccessExample {json} 成功的返回:
+     * {
+     * "code": 1,
+     * "msg": "获取签到奖励列表",
+     *  "data": {
+     *  "total_days": "7",
+     *  "days": 0,
+     * "gift_list": [
+     *   {
+     *  "day_nd": 1,
+     *  "list": [
+     *   {
+     * "id": 1,
+     *   "name": "金币",
+     *  "num": 1000
+     *  }
+     *  ],
+     *  "is_received": 0
+     *   },
+     *  {
+     *  "day_nd": 2,
+     * "list": [
+     *  {
+     *  "id": 1,
+     * "name": "金币",
+     *   "num": 1200
+     *   }
+     *   ],
+     *  "is_received": 0
+     *  }
+     * ]
+     * }
+     * }
+     *
+     */
+    public function getList()
+    {
+        $uid = $this->uid;
+        $platform_id = $this->system;
+//        $uid = 10326;
+//        $platform_id = 1;
+        $ret = CheckInService::instance()->getList($uid,$platform_id);
+        return $ret;
+    }
+    /**
+     * @api {get} /check-in/receive-gift  签到奖励领取
+     * @apiName  /chck-in/receive-gift
+     * @apiGroup check-in 日常签到
+     *@apiSampleRequest url  http://测试服地址:9009/check-in/receive-gift
+
+     * @apiParam {int} uid 用户id （两个参数都是现有的参数,不需要另外添加）【必传】
+     * @apiParam {int} system 系统ID 【必传】
+     *
+     * @apiSuccess {Number} code  响应编码
+     * @apiSuccess {String} msg 信息注解
+     * @apiSuccess {Object} data 数据
+     *
+     * @apiSuccessExample {json} 成功的返回:
+     *{
+     *"code": 1,
+     * "msg": "当天领取签到奖励成功",
+     * "data": [
+     *  {
+     * "id": 1,
+     *  "name": "金币",
+     *  "num": 1000
+     * }
+     * ]
+     * }
+     *
+     *
+     */
+    public function receiveGift()
+    {
+        $uid = $this->uid;
+        $platform_id = $this->system;
+//        $uid = 10326;
+//        $platform_id = 1;
+        $ret = CheckInService::instance()->receiveGift($uid,$platform_id);
+        return $ret;
+    }
+
+
+}

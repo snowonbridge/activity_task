@@ -1,0 +1,5 @@
+
+[Workerman\Service\NewHandService::change INFO 2018-03-29 10:16:28] '[{"id":1,"name":"\\u91d1\\u5e01","num":7000}]'
+[Workerman\Service\NewHandService::change WARN 2018-03-29 10:16:29] '当天已经领取新手奖励[10326,1,1]'
+[Workerman\Service\NewHandService::change INFO 2018-03-29 10:17:04] '[{"id":1,"name":"\\u91d1\\u5e01","num":7000}]'
+[Workerman\Service\NewHandService::change INFO 2018-03-29 10:19:06] '[{"id":1,"name":"\\u91d1\\u5e01","num":7000}]'

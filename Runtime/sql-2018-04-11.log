@@ -1,0 +1,2 @@
+
+[Workerman\Lib\Model::getRow  2018-04-11 16:27:04] select * from `poker_switch_setting` where channel_id=23 and status=1 order by update_time desc    limit 1

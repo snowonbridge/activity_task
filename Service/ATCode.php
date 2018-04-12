@@ -29,6 +29,9 @@ class  ATCode{
 //
     const CLMODE_ACTIVITY_TASK=16;//活动任务
     const CLMODE_ACTIVITY_TURN= 18;//转盘抽奖
+    const CLMODE_ACTIVITY_NEWHAND= 19;//新手奖励
+    const CLMODE_ACTIVITY_CHECKIN= 20;//签到奖励
+    const CLMODE_VIP_LOGIN= 21;//VIP每日登录领取奖励
 
     /**
      * 动作id配置
@@ -92,11 +95,12 @@ class  ATCode{
     const PLAYER_TYPE_FORCE_LOW = 1;
     const PLAYER_TYPE_FORCE_HIGHT = 2;
 
-    const SCENE_ID_FIRSTCHARGE =2034;
+    const SCENE_ID_FIRSTCHARGE =2035;
 
 
     const APP_ONLINE_VERSION_1_0_0 = '1.0.0';
     const APP_ONLINE_VERSION_1_1_0 = '1.1.0';
+
 
 
     /**
@@ -185,7 +189,7 @@ class  ATCode{
     }
     public static function transToMoney($diamond_num=0)
     {
-        return (int)$diamond_num/2;
+        return (int)($diamond_num/10);
     }
 
     public static function getGameAll($version='')
@@ -209,7 +213,7 @@ class  ATCode{
 
     public static function money2Diamond($money)
     {
-        return (int)($money*2);
+        return (int)($money*10);
     }
     /**
      * @param $game_id

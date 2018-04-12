@@ -10,7 +10,7 @@ require_once 'Autoloader.php';
 define('CFG_PATH',__DIR__.'/Config/');
 define('RUNTIME_PATH',__DIR__.'/Runtime/');
 define('DEBUG',true);
-$data['uid']=23;
+$data['uid']=43;
 $data ['mid']=23;
 $data['uname']='asdf';
 $data['channal_id']=23;
@@ -29,6 +29,8 @@ $data['valid_duration']=12;
 $data['use_time']=time()-23;
 //$ret = \Workerman\Model\ToolOperateLog::instance()->insert($data);
 //$ret = \Workerman\Model\ToolOperateLog::instance()->queryData();
-
+//var_export($ret);
 //\Workerman\Controller\TaskDispatcher::instance()->pushExpireLog();
 //\Workerman\Controller\TaskDispatcher::instance()->dealExpireTool();
+$ret = \Workerman\Model\SwitchSetting::instance()->getLoginOpen(23);
+var_export($ret);

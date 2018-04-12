@@ -1,0 +1,212 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: nihao
+ * Date: 2018/3/27
+ * Time: 10:50
+ */
+
+namespace Workerman\Service;
+
+
+use Workerman\Lib\Code;
+use Workerman\Lib\Logger;
+use Workerman\Lib\Model;
+use Workerman\Model\NewhandSetting;
+use Workerman\Model\User;
+use Workerman\Model\UserCheckinDaysLog;
+use Workerman\Model\UserNewhandLog;
+
+class NewHandService extends Model
+{
+    /**
+     * @desc 获取签到奖励列表
+     * @param $uid
+     * @param $platform_id
+     * @return array
+     */
+    public function getList($uid,$platform_id)
+    {
+        if(!$uid || !$platform_id)
+        {
+            Logger::write("参数非法",__METHOD__,"ERROR");
+            return ['code'=>Code::CODEERRPARAM,'msg'=>"参数非法 uid:$uid ,platform_id:$platform_id",'data'=>[]];
+        }
+        $user = User::instance()->getOneByUid($uid);
+        $channel_id = $user['unid'];
+        $register_way_id = $user['usertype'];
+        //已签到天数
+        $setting= NewhandSetting::instance()->getOne($channel_id,$register_way_id,$platform_id);
+        if(!$setting)
+        {
+            return ['code'=>Code::DATAEXCEPTION,'msg'=>"配置缺失 uid:$uid ,channel_id：$channel_id,register_way_id:$register_way_id,platform_id:$platform_id",'data'=>[]];
+
+        }
+        if($setting['valid_days']*86400< (time()-$user['regtime']))
+        {//已过新手期
+            return ['code'=>Code::NOT_ALLOWED_OPERATION,'msg'=>"已过新手期 不再有新手奖励",'data'=>[]];
+        }
+        $gift_list = $setting['gift_content'];
+        $log = UserNewhandLog::instance()->getOne($uid);
+        $cur_times = empty($log)?0:$log['times'];
+        if($log && $cur_times >= $setting['times'])
+        {
+            return ['code'=>Code::NOT_ALLOWED_OPERATION,'msg'=>"已领完所有奖励,不能再领取",'data'=>[]];
+        }
+        foreach ($gift_list as &$item)
+        {
+            if($item['time_nd'] <= $cur_times)
+            {
+                $item['is_received'] = 1;
+            }else{
+                $item['is_received'] = 0;
+            }
+        }
+        return ['code'=>Code::SUCCESS,'msg'=>"获取新手奖励列表",'data'=>$gift_list];
+
+    }
+
+    /**
+     * @desc 领取新手奖励或者添加关闭操作日志
+     * @param type 1 领取奖励 ;2  写点击关闭按钮日志
+     * @param $uid
+     */
+    public function change($uid,$platform_id,$type=1)
+    {
+        if(!$uid || !$platform_id )
+        {
+            Logger::write("参数非法",__METHOD__,"ERROR");
+            return ['code'=>Code::CODEERRPARAM,'msg'=>"参数非法 uid:$uid ",'data'=>[]];
+        }
+        $user = User::instance()->getOneByUid($uid);
+        $channel_id = $user['unid'];
+        $register_way_id = $user['usertype'];
+        $regtime = $user['regtime'];
+        $setting= NewhandSetting::instance()->getOne($channel_id,$register_way_id,$platform_id);
+        $log = UserNewhandLog::instance()->getOne($uid);
+        $today_log = UserNewhandLog::instance()->getTodayOne($uid);
+        if($type == 1)
+        {//领取奖励
+
+            if($setting['valid_days']*86400< (time()-$regtime))
+            {//已过新手期
+                Logger::write("已过新手期 不再有新手奖励".json_encode(func_get_args()),__METHOD__,"WARN");
+
+                return ['code'=>Code::NOT_ALLOWED_OPERATION,'msg'=>"已过新手期 不再有新手奖励",'data'=>[]];
+
+            }
+            if($log && $setting['times']<=$log['times'])
+            {
+                Logger::write("已达到新手奖励次数".json_encode(func_get_args()),__METHOD__,"WARN");
+                return ['code'=>Code::NOT_ALLOWED_OPERATION,'msg'=>"已达到新手奖励次数",'data'=>[]];
+
+            }
+            if($today_log && $today_log['times'] >0)
+            {
+                Logger::write("当天已经领取新手奖励".json_encode(func_get_args()),__METHOD__,"WARN");
+                return ['code'=>Code::NOT_ALLOWED_OPERATION,'msg'=>"当天已经领取新手奖励",'data'=>[]];
+            }
+
+
+            $new_times = empty($log['times'])?0:$log['times']+1;
+            if($today_log)
+            {
+                $data=array();
+                $data['times'] = $new_times;
+                $ret = UserNewhandLog::instance()->updateStatus($uid,$data);
+                if(!$ret)
+                {
+                    return ['code'=>Code::OPERATEEXCEPTION,'msg'=>"领取奖励异常1",'data'=>[]];
+                }
+            }else{
+                $data=array();
+                $data['uid'] = $uid;
+                $data['times'] = $new_times;
+                $data['close_times'] = 0;
+                $ret = UserNewhandLog::instance()->add($data);
+                if(!$ret)
+                {
+                    return ['code'=>Code::OPERATEEXCEPTION,'msg'=>"领取奖励异常2",'data'=>[]];
+                }
+            }
+            $gift_list = $setting['gift_content'];
+            $list=[];
+            foreach ($gift_list as $item)
+            {
+                if($item['time_nd'] == $new_times)
+                {
+                    $list = $item['list'];
+                    break;
+                }
+            }
+            if(!$list)
+            {
+                Logger::write(json_encode($gift_list),__METHOD__,"ERROR");
+                return ['code'=>Code::OPERATEEXCEPTION,'msg'=>"未查询到奖励数据",'data'=>[]];
+            }
+            foreach ($list as $item)
+            {
+                $gift_content_id = $item['id'];
+                $num = $item['num'];
+                GiftService::instance()->insertGift($uid,$gift_content_id,$num,'新手奖励'."第 {$new_times}次",ATCode::CLMODE_ACTIVITY_NEWHAND);
+            }
+            return ['code'=>Code::SUCCESS,'msg'=>"当天领取新手奖励成功",'data'=>$list];
+        }elseif($type == 2)
+        {//写关闭日志
+            if($today_log)
+            {
+                $data=array();
+                $data['close_times'] = $log['close_times']+1;
+                $ret = UserNewhandLog::instance()->updateStatus($uid,$data);
+                if(!$ret)
+                {
+                    return ['code'=>Code::OPERATEEXCEPTION,'msg'=>"写关闭日志异常2",'data'=>[]];
+                }
+            }else{
+                $data=array();
+                $data['uid'] = $uid;
+                $data['times'] = 0;
+                $data['close_times'] = $log['close_times']+1;
+                $ret = UserNewhandLog::instance()->add($data);
+                if(!$ret)
+                {
+                    return ['code'=>Code::OPERATEEXCEPTION,'msg'=>"写关闭日志异常2",'data'=>[]];
+                }
+            }
+            return ['code'=>Code::SUCCESS,'msg'=>"写关闭按钮日志成功",'data'=>[]];
+        }
+
+    }
+    /**
+     * @desc 当天是否可以领取新手奖励
+     * premise:1.有效期内
+     * @param $uid
+     * @param $rule_id
+     */
+    public function canRecvd($uid,$channel_id,$register_way_id,$platform_id,$regtime)
+    {
+
+        $setting= NewhandSetting::instance()->getOne($channel_id,$register_way_id,$platform_id);
+        $log = UserNewhandLog::instance()->getOne($uid);
+        if($setting['valid_days']*86400< (time()-$regtime))
+        {//已过新手期
+            Logger::write("已过新手期 不再有新手奖励".json_encode(func_get_args()),__METHOD__,"WARN");
+
+            return 0;
+        }
+        if($log && $setting['times']<=$log['times'])
+        {
+            Logger::write("已达到新手奖励次数".json_encode(func_get_args()),__METHOD__,"WARN");
+            return 0;
+        }
+        $last_log = UserNewhandLog::instance()->getTodayOne($uid);
+        if($last_log && $last_log['times'] >0)
+        {
+            Logger::write("当天已经领取新手奖励".json_encode(func_get_args()),__METHOD__,"WARN");
+            return 0;
+        }
+
+
+        return 1;
+    }
+}

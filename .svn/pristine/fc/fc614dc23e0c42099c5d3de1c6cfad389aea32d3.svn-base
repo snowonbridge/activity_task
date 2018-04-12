@@ -1,0 +1,209 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: nihao
+ * Date: 2018/3/27
+ * Time: 11:00
+ */
+
+namespace Workerman\Model;
+
+
+use Workerman\Lib\Logger;
+use Workerman\Lib\Model;
+use Workerman\Lib\Okey;
+use Workerman\Service\ATCode;
+
+class UserCheckinDaysLog extends Model
+{
+    public $db = 'activity';
+    public $table = 'user_checkin_days_log';
+
+
+    public function rule()
+    {
+        /**
+        `uid` int(11) NOT NULL,
+        `channel_id` int(11) NOT NULL DEFAULT '0' COMMENT '渠道ID',
+        `rule_id` int(11) NOT NULL DEFAULT '0' COMMENT '连续规则:1@连续制,2@非连续制',
+        `register_way_id` int(11) NOT NULL DEFAULT '0' COMMENT '注册方式:1@微信,2@QQ,3@游客',
+        `platform_id` int(11) NOT NULL DEFAULT '0' COMMENT '开放系统:1@android,2@IOS',
+        `days` int(11) NOT NULL DEFAULT '0' COMMENT '登录天数',
+        `times` int(11) NOT NULL DEFAULT '0' COMMENT '当天登录领取次数',
+        `update_time` int(11) NOT NULL DEFAULT '0' COMMENT '更新时间',
+        `create_time` int(11) NOT NULL DEFAULT '0' COMMENT '创建时间',
+         */
+        return [
+            ['uid','required'],
+            ['days','required'],
+            ['cycles','required'],
+            ['times','required'],
+        ];
+    }
+
+    /**
+     * @desc
+     * @param array $params
+     * @return bool
+     */
+    public function add($params=array())
+    {
+        if(!$this->validate($params,$this->rules()))
+        {
+            Logger::write('数据验证失败',__METHOD__,"ERROR");
+            return false;
+        }
+        $params['create_time'] = time();
+        $params['update_time'] = time();
+//        $this->rmCache($params["uid"],$params['activity_id'],$params['add_time']);
+        return  $this->insert($this->table,$params);
+
+    }
+
+    /**
+     * @desc 缓存清除
+     * @return int
+     */
+    public function rmCache()
+    {
+//        return ATCode::rmCache(Okey::());
+    }
+
+    /**
+     * @desc 获取一行记录
+     * @param $uid
+     * @param $rule_id
+     */
+    public function getOne($uid,$rule_id)
+    {
+        $r = $this->getRow($this->table,"uid=:uid and rule_id=$rule_id order by cycles desc ,update_time desc",[':uid'=>$uid]);
+        if(!$r)
+        {
+            return [];
+        }
+        return $r;
+    }
+
+
+    /**
+     * @desc 签到操作
+     * @param $uid
+     * @param $setting [rule_id,days,update_time]
+     * @return bool
+     */
+    public function checkin($uid,$setting)
+    {
+        $rule_id = $setting['rule_id'];
+        $log = $this->getOne($uid,$rule_id);
+        $days = empty($log)?0:$log['days'];
+        if($days == 0)
+        {//没有过签到记录
+            $data['uid'] = $uid;
+            $data['days'] = 1;
+            $data['times'] = 1;
+            $data['cycles'] = 1;
+            $data['rule_id'] = $rule_id;
+            $this->add($data);
+            Logger::write("没有过签记录,添加签到记录",__METHOD__,"INFO");
+            return $data['days'];
+        }else {
+            if ($setting['update_time'] > $log['update_time']) {//已更新配置
+                $data['uid'] = $uid;
+                $data['days'] = 1;
+                $data['times'] = 1;
+                $data['cycles'] = $log['cycles'] + 1;
+                $data['rule_id'] = $rule_id;
+                $this->add($data);
+                Logger::write("签到已更新配置",__METHOD__,"INFO");
+                return $data['days'];
+
+            } else {//未更新配置
+                if ($rule_id == CheckinSetting::RULE_ID_CONTINUE_Y) {//连续制
+                    $today = mktime(0,0,0,date("m"),date("d"),date("Y"));
+                    $recvRecs = UserCheckinDaysLog::instance()->getGiftStatus($uid, $rule_id);
+                    $counts = count($recvRecs);
+                    if ($counts >= $setting['days']) {
+                        $data['uid'] = $uid;
+                        $data['days'] = 1;
+                        $data['times'] = 1;
+                        $data['cycles'] = $log['cycles'] + 1;
+                        $data['rule_id'] = $rule_id;
+                        $this->add($data);
+                        Logger::write("连续制 已达到配置的天数,重新计数",__METHOD__,"INFO");
+                        return $data['days'];
+
+                    } else {
+                        if($log['update_time']-$today>24*3600)
+                        {//昨天没有登录签到过
+                            $data['uid'] = $uid;
+                            $data['days'] =  1;
+                            $data['times'] = 1;
+                            $data['cycles'] = $log['cycles']+1;
+                            $data['rule_id'] = $rule_id;
+                            $this->add($data);
+                            Logger::write("连续制 昨天没有登录签到过,重新计数",__METHOD__,"INFO");
+                            return $data['days'];
+
+                        }else{//昨天有登录签到过
+                            $data['uid'] = $uid;
+                            $data['days'] = $days + 1;
+                            $data['times'] = 1;
+                            $data['cycles'] = $log['cycles'];
+                            $data['rule_id'] = $rule_id;
+                            $this->add($data);
+                            Logger::write("连续制 昨天有登录签到过,递增计数",__METHOD__,"INFO");
+                            return $data['days'];
+
+                        }
+
+                    }
+                }elseif ($setting['rule_id'] == CheckinSetting::RULE_ID_CONTINUE_N) {//非连续制
+                    $recvRecs = UserCheckinDaysLog::instance()->getGiftStatus($uid, $rule_id);
+                    $counts = count($recvRecs);
+                    if ($counts >= $setting['days']) {
+                        $data['uid'] = $uid;
+                        $data['days'] = 1;
+                        $data['times'] = 1;
+                        $data['cycles'] = $log['cycles'] + 1;
+                        $data['rule_id'] = $rule_id;
+                        $this->add($data);
+                        Logger::write("非连续制 已达到配置的天数,重新计数",__METHOD__,"INFO");
+                        return $data['days'];
+
+                    } else {
+                        $data['uid'] = $uid;
+                        $data['days'] = $days + 1;
+                        $data['times'] = 1;
+                        $data['cycles'] = $log['cycles'];
+                        $data['rule_id'] = $rule_id;
+                        $this->add($data);
+                        Logger::write("非连续制 未配置的天数,递增计数",__METHOD__,"INFO");
+                        return $data['days'];
+                    }
+                }
+            }
+        }
+
+
+    }
+
+    /**
+     * @desc 获取领取状态
+     */
+    public function getGiftStatus($uid,$rule_id)
+    {
+        $last_one = $this->getOne($uid,$rule_id);
+        if(!$last_one)
+        {
+            return [];
+        }
+        $last_cycle = $last_one['cycles'];
+        $list = $this->getRows($this->table,"uid=:uid and rule_id=$rule_id and cycles=:cycles",[':uid'=>$uid,":cycles"=>$last_cycle]);
+        foreach ($list as $item)
+        {
+            $result[$item['days']] = true;
+        }
+        return $result;
+    }
+
+}
